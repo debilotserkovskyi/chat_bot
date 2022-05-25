@@ -3,12 +3,13 @@ import time
 import datetime
 from telegram import *
 from telegram.ext import *
-import constatns as keys
 import logging
 from data import data
 import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
+
+API_KEY = '5314575057:AAESLWLqXrPd1rEF775gUOp4b8FlY1_eHKA'
 
 PORT = int(os.environ.get('PORT', '8443'))
 
@@ -17,7 +18,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-TOKEN = keys.API_KEY2
+TOKEN = API_KEY
 allowed_usernames = list(data.keys())
 admins = []
 
@@ -203,9 +204,9 @@ def repeat(update, context):
 
 
 def main():
-    updater = Updater(keys.API_KEY2, use_context=True)
+    updater = Updater(API_KEY, use_context=True)
     dp = updater.dispatcher
-    updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + keys.API_KEY2)
+    updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + API_KEY)
 
     dp.add_handler(MessageHandler(Filters.text, user_check))
     
