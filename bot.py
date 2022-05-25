@@ -9,7 +9,6 @@ import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
 
-API_KEY = '5314575057:AAESLWLqXrPd1rEF775gUOp4b8FlY1_eHKA'
 
 PORT = int(os.environ.get('PORT', '8443'))
 
