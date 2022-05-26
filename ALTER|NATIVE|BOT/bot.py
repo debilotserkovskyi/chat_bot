@@ -1,6 +1,6 @@
 import sys
 
-import boto3, uuid, logging, datetime, time, random
+import logging, datetime, time, random
 from telegram import *
 from telegram.ext import *
 import logging
@@ -13,7 +13,6 @@ PORT = int(os.environ.get('PORT', '8443'))
 here = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(here, "./vendored"))
 
-dynamodb = boto3.resource('dynomodb')
 TOKEN = os.environ['TELEGRAM_TOKEN']
 BASE_URL = "https://api.telegram.org/bot{}".format(TOKEN)
 
