@@ -209,7 +209,7 @@ def repeat(update, context):
 def main():
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
-    updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + API_KEY)
+    # updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + TO)
 
     dp.add_handler(MessageHandler(Filters.text, user_check))
     
