@@ -211,13 +211,13 @@ def main():
     dp = updater.dispatcher
     # updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + TO)
 
-    dp.add_handler(MessageHandler(Filters.text, user_check))
-    
     dp.add_handler(CommandHandler('start', start_command))
-    dp.add_handler(CommandHandler('repeat', first_buttons))
-    dp.add_handler(CallbackQueryHandler(generate_buttons))
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
+    dp.add_handler(CommandHandler('repeat', first_buttons))
+
+    dp.add_handler(MessageHandler(Filters.text, user_check))
+    dp.add_handler(CallbackQueryHandler(generate_buttons))
     
     dp.add_error_handler(error)
     
