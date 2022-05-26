@@ -44,7 +44,7 @@ def admin(update, context):
 def start_command(update, context):
     update.message.reply_text("it's me, your pocket lina!\nfollow the bot i hope you'll like it")
     update.message.reply_text("or press /help to get info about this bot")
-    return first_buttons(update, context)
+    return user_check(update, context)
 
 
 def menu(update, context):
@@ -83,6 +83,7 @@ def user_check(update, context):
     
     if text in ['putin', 'путін', "путин"]:
         update.message.reply_text('p*tin – huilo')
+        return menu(update, context)
     
     if username in admins:
         update.message.reply_text('hi, master!')
@@ -91,7 +92,7 @@ def user_check(update, context):
         update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
     else:
         update.message.reply_text(f"hi, {update.message.chat.first_name}")
-        return start_command(update, context)
+        return first_buttons(update, context)
 
 
 def first_buttons(update, context):
