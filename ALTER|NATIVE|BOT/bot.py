@@ -1,11 +1,9 @@
 import sys
-
 import logging, datetime, time, random
 from telegram import *
 from telegram.ext import *
 import logging
 from data import data
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
 
 
