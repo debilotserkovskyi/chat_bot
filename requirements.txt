@@ -1,2 +1,2 @@
-python-telegram-bot==12.7
-urllib3==1.26.7
+python-telegram-bot==13.12
+urllib3==1.26.9

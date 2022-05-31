@@ -6,12 +6,10 @@ import logging
 from data import data
 import os
 
-
 PORT = int(os.environ.get('PORT', '8443'))
-here = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(here, "./vendored"))
 
 TOKEN = os.environ['TELEGRAM_TOKEN']
+
 BASE_URL = "https://api.telegram.org/bot{}".format(TOKEN)
 
 # Enable logging
