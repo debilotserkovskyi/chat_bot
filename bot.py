@@ -74,8 +74,8 @@ def user_check(update, context):
     username = update.message.from_user.username
     print(username)
     
-    with open('loggins.txt', 'a') as f:
-        f.write(f'\n {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}: {username}\n')
+    # with open('loggins.txt', 'a') as f:
+    #     f.write(f'\n {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}: {username}\n')
     
     if text in ['putin', 'путін', "путин"]:
         update.message.reply_text('p*tin – huilo')
