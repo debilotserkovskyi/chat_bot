@@ -6,7 +6,6 @@ import logging
 from data import data
 import os
 
-PORT = int(os.environ.get('PORT', '8443'))
 
 TOKEN = os.environ['TELEGRAM_TOKEN']
 
@@ -20,21 +19,8 @@ logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
 
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
 logged = 0
 contact_pressed = 0
-
-
-def admin(update, context):
-    global logged, contact_pressed
-    text = str(update.message.text).lower()
-    user = update.message.from_user.username
-    # update.message.reply_text(f'user {user} send {text} to bot')
-    logged += 1
-    # update.message.reply_text(f'hey, {user} is pressed start')
-    with open('admin.txt', 'w') as f:
-        f.write(f"""User {user} pressed START {logged} time(s)\npressed CONTACT button {contact_pressed} time(s)""")
 
 
 def start_command(update, context):
@@ -74,17 +60,11 @@ def user_check(update, context):
     username = update.message.from_user.username
     print(username)
     
-    # with open('loggins.txt', 'a') as f:
-    #     f.write(f'\n {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}: {username}\n')
-    
     if text in ['putin', 'путін', "путин"]:
         update.message.reply_text('p*tin – huilo')
         return menu(update, context)
     
-    if username in admins:
-        update.message.reply_text('hi, master!')
-        return admin(update, context), first_buttons(update, context)
-    elif username not in allowed_usernames:
+    if username not in allowed_usernames:
         update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
     else:
         update.message.reply_text(f"hi, {update.message.chat.first_name}")
@@ -143,8 +123,7 @@ def generate_buttons(update: Update, context: CallbackContext):
         dishes_to_dict[i['category']].append(i['name'])
     
     for i in data[username]:
-        print(dishes_to_dict)
-        
+    
         # send ingredients and recipy to the client depends on recipy was chosen
         if choice in i['callback']:
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
@@ -197,9 +176,8 @@ def error(update, context):
     print(f"update {update} \ncaused error {context.error}")
 
 
-def repeat(update, context):
-    time.sleep(1)
-    menu(update, context)
+def questionnaire():
+    pass
 
 
 def main():
