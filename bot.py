@@ -1,5 +1,7 @@
 import sys
 import logging, datetime, time, random
+import telegram
+import requests
 from telegram import *
 from telegram.ext import *
 import logging
@@ -8,6 +10,8 @@ import os
 
 
 TOKEN = os.environ['TELEGRAM_TOKEN']
+ADMIN = os.environ['USER_ID']
+resend = f'https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={ADMIN}&text='
 
 BASE_URL = "https://api.telegram.org/bot{}".format(TOKEN)
 
@@ -63,6 +67,11 @@ def user_check(update, context):
     if text in ['putin', 'путін', "путин"]:
         update.message.reply_text('p*tin – huilo')
         return menu(update, context)
+    
+    if text == 'hi':
+        update.message.reply_text('gotcha')
+        requests.get(f"{resend}User @{update.message.from_user.username} send {text}")
+        # telegram.Bot.send_message(self=update.message, chat_id=ADMIN, text=f'{username} send "{update.message.text}"')
     
     if username not in allowed_usernames:
         update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
