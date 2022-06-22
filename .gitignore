@@ -16,6 +16,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+data.py
 
 # Serverless directories
 .serverless

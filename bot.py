@@ -70,7 +70,11 @@ def user_check(update, context):
     
     if text == 'hi':
         update.message.reply_text('gotcha')
-        requests.get(f"{resend}User @{update.message.from_user.username} send {text}")
+        requests.get(f"{resend}\n"
+                     f"messege send: {datetime.datetime.now()}\n"
+                     f"from User: @{update.message.from_user.username}\n"
+                     f"Message: {text}\n"
+                     f"Message id: {update.message.message_id}")
         # telegram.Bot.send_message(self=update.message, chat_id=ADMIN, text=f'{username} send "{update.message.text}"')
     
     if username not in allowed_usernames:
