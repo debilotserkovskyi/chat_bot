@@ -80,6 +80,7 @@ def user_check(update, context):
                      f"from User: @{update.message.from_user.username}\n"
                      f"Message: {text}\n"
                      f"Message id: {update.message.message_id}")
+        update.message.reply_text('.')
     
     if username not in allowed_usernames:
         update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
