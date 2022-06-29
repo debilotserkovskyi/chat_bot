@@ -1,13 +1,14 @@
-import sys
-import logging, datetime, time, random
-import telegram
+import datetime
+import logging
+import os
+import random
+import time
+
 import requests
 from telegram import *
 from telegram.ext import *
-import logging
-from data import data
-import os
 
+from data import data
 
 TOKEN = os.environ['TELEGRAM_TOKEN']
 ADMIN = os.environ['USER_ID']
@@ -24,7 +25,6 @@ allowed_usernames = list(data.keys())
 admins = []
 
 logged = 0
-contact_pressed = 0
 
 
 def start_command(update, context):
@@ -39,7 +39,7 @@ def menu(update, context):
                [KeyboardButton("/help")],
                ]
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='When you will be ready we can tap any button',
+                             text='when you will be ready we can tap any button',
                              reply_markup=ReplyKeyboardMarkup(buttons))
 
 
@@ -65,17 +65,21 @@ def user_check(update, context):
     print(username)
     
     if text in ['putin', 'путін', "путин"]:
-        update.message.reply_text('p*tin – huilo')
-        return menu(update, context)
+        if text == 'putin':
+            update.message.reply_text('p*tin – huilo')
+            time.sleep(1)
+            return menu(update, context)
+        elif text == 'путін' or 'путин':
+            update.message.reply_text('п*тін - хуйло')
+            time.sleep(1)
+            return menu(update, context)
     
-    if text == 'hi':
-        update.message.reply_text('gotcha')
+    if text:
         requests.get(f"{resend}\n"
                      f"messege send: {datetime.datetime.now()}\n"
                      f"from User: @{update.message.from_user.username}\n"
                      f"Message: {text}\n"
                      f"Message id: {update.message.message_id}")
-        # telegram.Bot.send_message(self=update.message, chat_id=ADMIN, text=f'{username} send "{update.message.text}"')
     
     if username not in allowed_usernames:
         update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
