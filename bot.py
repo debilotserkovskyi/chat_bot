@@ -59,6 +59,31 @@ def contact(update, context):
     update.message.reply_text("here:", reply_markup=reply_markup_start)
 
 
+def admin_panel(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    choice = query.data
+    keyboard = []
+    
+    option_buttons = [[InlineKeyboardButton('send message to user', callback_data='send_message')],
+                      [InlineKeyboardButton('see all recipes for user', callback_data='something else')]]
+    update.message.reply_text("here some options you can do:", reply_markup=InlineKeyboardMarkup(option_buttons))
+    
+    if choice == 'send_message':
+        send_message_buttons = [[InlineKeyboardButton('choose user', callback_data='choose_user')],
+                                [InlineKeyboardButton('something else', callback_data='something else')]]
+        update.message.reply_text("ok, so:", reply_markup=InlineKeyboardMarkup(send_message_buttons))
+        if choice == 'choose_user':
+            for i in data:
+                keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                              text="here is your whole menu")
+                context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                                      message_id=query.message.message_id,
+                                                      reply_markup=reply_markup)
+
+
 def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
@@ -75,18 +100,22 @@ def user_check(update, context):
             return menu(update, context)
     
     if text:
-        requests.get(f"{resend}\n"
-                     f"messege send: {datetime.datetime.now()}\n"
-                     f"from User: @{update.message.from_user.username}\n"
-                     f"Message: {text}\n"
-                     f"Message id: {update.message.message_id}")
-        update.message.reply_text('.')
-    
-    if username not in allowed_usernames:
-        update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
-    else:
-        update.message.reply_text(f"hi, {update.message.chat.first_name}")
-        return first_buttons(update, context)
+        if username == os.environ['boss']:
+            return admin_panel(update, context)
+        else:
+            requests.get(f"{resend}\n"
+                         f"messege send: {datetime.datetime.now()}\n"
+                         f"from User: @{update.message.from_user.username}\n"
+                         f"Message: {text}\n"
+                         f"Message id: {update.message.message_id}")
+            update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
+            
+            # check username and continue
+            if username not in allowed_usernames:
+                update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
+            else:
+                update.message.reply_text(f"hi, {update.message.chat.first_name}")
+                return first_buttons(update, context)
 
 
 def first_buttons(update, context):
@@ -201,13 +230,12 @@ def questionnaire():
 def main():
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
-    # updater.bot.setWebhook('https://cryptic-temple-93713.herokuapp.com/' + TO)
-
     dp.add_handler(CommandHandler('start', start_command))
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
     dp.add_handler(CommandHandler('repeat', first_buttons))
-
+    dp.add_handler(CommandHandler('admin', admin_panel))
+    
     dp.add_handler(MessageHandler(Filters.text, user_check))
     dp.add_handler(CallbackQueryHandler(generate_buttons))
     
