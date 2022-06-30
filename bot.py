@@ -59,14 +59,6 @@ def contact(update, context):
     update.message.reply_text("here:", reply_markup=reply_markup_start)
 
 
-def admin_panel(update: Update, context: CallbackContext):
-    option_buttons = [[InlineKeyboardButton('send message to user', callback_data='send_message')],
-                      [InlineKeyboardButton('see all recipes for user', callback_data='something else')]]
-    context.bot.send_message(text="so:", reply_markup=InlineKeyboardMarkup(option_buttons),
-                             chat_id=update.message.chat.id)
-    return generate_buttons(update, context)
-
-
 def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
@@ -84,7 +76,11 @@ def user_check(update, context):
     
     if text:
         if username == os.environ['boss']:
-            return admin_panel(update, context)
+            context.bot.send_message(text="hehe",
+                                     reply_markup=InlineKeyboardMarkup(
+                                         [[InlineKeyboardButton('start admin', callback_data='start')]]),
+                                     chat_id=update.message.chat.id)
+            return generate_buttons(update, context)
         else:
             requests.get(f"{resend}\n"
                          f"messege send: {datetime.datetime.now()}\n"
@@ -119,6 +115,10 @@ def generate_buttons(update: Update, context: CallbackContext):
     cat_list = []
     dishes_to_dict = {}
     used = set()
+    
+    # admin section
+    if username == os.environ['boss']:
+        return admin_panel(update=update, context=context, choice=choice, keyboard=keyboard, query=query)
     
     # generate whole menu in MENU button + add random button and back button:
     if choice == 'whole_menu':
@@ -200,31 +200,36 @@ def generate_buttons(update: Update, context: CallbackContext):
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
 
-    # admin section
-    if choice == 'send_message':
-        keyboard.append([InlineKeyboardButton('see all users', callback_data='all_users')])
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text='choose a user')
-        reply_markup = InlineKeyboardMarkup(keyboard)
+
+def admin_panel(update: Update, context: CallbackContext, choice, keyboard, query):
+    if choice == 'start':
+        keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
+        keyboard.append([InlineKeyboardButton('something else', callback_data='something')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
-        for i in data:
+                                              reply_markup=InlineKeyboardMarkup(keyboard))
+    
+    if choice == 'send_message':
+        keyboard.append([InlineKeyboardButton('see all users', callback_data='all_users')])
+        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                              message_id=query.message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(keyboard))
+    if choice == 'all_users':
+        for i in data.keys():
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                          text="choose a user")
-            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                                  reply_markup=reply_markup)
-        #
-        # for j in data:
-        #     if choice == j:
-        #         context.bot.send_message(text=f'@{j}', chat_id=query.message.chat_id,
-        #                                  parse_mode=ParseMode.MARKDOWN)
+        keyboard.append([InlineKeyboardButton('back', callback_data='send_message')])
+        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                      text="choose a user")
+        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(keyboard))
+    for i in data.keys():
+        if choice == i:
+            context.bot.send_message(text=f'@{i}', chat_id=query.message.chat_id,
+                                     parse_mode=ParseMode.MARKDOWN)
 
 
 def error(update, context):
-    print(f"update {update} \ncaused error {context.error}")
+    print(f"\nupdate {update} \ncaused error {context.error}\n")
 
 
 def questionnaire():
