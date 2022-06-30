@@ -60,28 +60,11 @@ def contact(update, context):
 
 
 def admin_panel(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    choice = query.data
-    keyboard = []
-    
     option_buttons = [[InlineKeyboardButton('send message to user', callback_data='send_message')],
                       [InlineKeyboardButton('see all recipes for user', callback_data='something else')]]
-    update.message.reply_text("here some options you can do:", reply_markup=InlineKeyboardMarkup(option_buttons))
-    
-    if choice == 'send_message':
-        send_message_buttons = [[InlineKeyboardButton('choose user', callback_data='choose_user')],
-                                [InlineKeyboardButton('something else', callback_data='something else')]]
-        update.message.reply_text("ok, so:", reply_markup=InlineKeyboardMarkup(send_message_buttons))
-        if choice == 'choose_user':
-            for i in data:
-                keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              text="here is your whole menu")
-                context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                                      message_id=query.message.message_id,
-                                                      reply_markup=reply_markup)
+    context.bot.send_message(text="so:", reply_markup=InlineKeyboardMarkup(option_buttons),
+                             chat_id=update.message.chat.id)
+    return generate_buttons(update, context)
 
 
 def user_check(update, context):
@@ -163,15 +146,14 @@ def generate_buttons(update: Update, context: CallbackContext):
                                       text="chose the bento base")
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
-    
+
     for i in data[username]:
         dishes_to_dict[i['category']] = []
     for i in data[username]:
         dishes_to_dict[i['category']].append(i['name'])
-    
+
+    # send ingredients and recipy to the client depends on recipy was chosen
     for i in data[username]:
-    
-        # send ingredients and recipy to the client depends on recipy was chosen
         if choice in i['callback']:
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
                                      chat_id=query.message.chat_id,
@@ -218,6 +200,28 @@ def generate_buttons(update: Update, context: CallbackContext):
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
 
+    # admin section
+    if choice == 'send_message':
+        keyboard.append([InlineKeyboardButton('see all users', callback_data='all_users')])
+        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                      text='choose a user')
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                              message_id=query.message.message_id,
+                                              reply_markup=reply_markup)
+        for i in data:
+            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                          text="choose a user")
+            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                                  reply_markup=reply_markup)
+        #
+        # for j in data:
+        #     if choice == j:
+        #         context.bot.send_message(text=f'@{j}', chat_id=query.message.chat_id,
+        #                                  parse_mode=ParseMode.MARKDOWN)
+
 
 def error(update, context):
     print(f"update {update} \ncaused error {context.error}")
@@ -234,6 +238,7 @@ def main():
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
     dp.add_handler(CommandHandler('repeat', first_buttons))
+
     dp.add_handler(CommandHandler('admin', admin_panel))
     
     dp.add_handler(MessageHandler(Filters.text, user_check))
