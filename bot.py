@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import time
+from ast import literal_eval
 
 import requests
 from telegram import *
@@ -23,8 +24,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
+
 # dict to save users how sends start command
-users = {}
+with open('users.txt', 'r') as f:
+    all_ = f.read()
+    if len(all_) == 0:
+        users = {}
+    else:
+        users = literal_eval(all_)
 
 logged = 0
 
@@ -32,19 +39,18 @@ logged = 0
 def start_command(update, context):
     global users
     
-    # get users in dict
     user = update.message.from_user
-    id = user['id']
+    id_ = user['id']
     name = user['username']
-    if id not in users.keys():
-        users[id] = name
+    if id_ not in users.keys():
+        users[str(id_)] = name
+        
+        # get users in dict and save them in txt
+        with open('users.txt', 'w') as s:
+            s.write(str(users))
     
     update.message.reply_text("it's me, your pocket lina!\nfollow the bot i hope you'll like it")
     update.message.reply_text("or press /help to get info about this bot")
-    
-    # save them in txt
-    with open('users.txt', 'a') as s:
-        s.write(str(users))
     
     return user_check(update, context)
 
@@ -220,17 +226,18 @@ def generate_buttons(update: Update, context: CallbackContext):
 def admin_panel(update: Update, context: CallbackContext, choice, keyboard, query):
     if choice == 'start':
         keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
-        keyboard.append([InlineKeyboardButton('something else', callback_data='something')])
+        keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
-    
+
     if choice == 'send_message':
-        keyboard.append([InlineKeyboardButton('see all users', callback_data='all_users')])
+        keyboard.append([InlineKeyboardButton('see all yours users', callback_data='all_my_users')])
+        keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
-    if choice == 'all_users':
+    if choice == 'all_my_users':
         for i in data.keys():
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='send_message')])
@@ -242,6 +249,14 @@ def admin_panel(update: Update, context: CallbackContext, choice, keyboard, quer
         if choice == i:
             context.bot.send_message(text=f'@{i}', chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
+    if choice == 'all_users':
+        for i in users:
+            keyboard.append([InlineKeyboardButton(users[i], callback_data=i)])
+        keyboard.append([InlineKeyboardButton('back', callback_data='send_message')])
+        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                      text="choose a user")
+        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def error(update, context):
