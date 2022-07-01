@@ -23,13 +23,29 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
+# dict to save users how sends start command
+users = {}
 
 logged = 0
 
 
 def start_command(update, context):
+    global users
+    
+    # get users in dict
+    user = update.message.from_user
+    id = user['id']
+    name = user['username']
+    if id not in users.keys():
+        users[id] = name
+    
     update.message.reply_text("it's me, your pocket lina!\nfollow the bot i hope you'll like it")
     update.message.reply_text("or press /help to get info about this bot")
+    
+    # save them in txt
+    with open('users.txt', 'a') as s:
+        s.write(str(users))
+    
     return user_check(update, context)
 
 
