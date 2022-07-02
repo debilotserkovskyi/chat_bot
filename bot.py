@@ -6,6 +6,7 @@ import time
 from ast import literal_eval
 
 import requests
+import telegram
 from telegram import *
 from telegram.ext import *
 
@@ -85,7 +86,6 @@ def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
     print(username)
-    
     if text in ['putin', 'путін', "путин"]:
         if text == 'putin':
             update.message.reply_text('p*tin – huilo')
@@ -128,7 +128,7 @@ def first_buttons(update, context):
     update.message.reply_text("what's up? 🧡", reply_markup=reply_markup_start)
 
 
-def generate_buttons(update: Update, context: CallbackContext):
+def generate_buttons(update, context: CallbackContext):
     keyboard = []
     query = update.callback_query
     username = query.from_user.username
@@ -180,8 +180,11 @@ def generate_buttons(update: Update, context: CallbackContext):
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+            time.sleep(2)
             context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
@@ -204,8 +207,11 @@ def generate_buttons(update: Update, context: CallbackContext):
         context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
                                  chat_id=query.message.chat_id,
                                  parse_mode=ParseMode.MARKDOWN)
+        context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+        time.sleep(2)
         context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
                                  parse_mode=ParseMode.MARKDOWN)
+        context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
         time.sleep(2)
         context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
                                  parse_mode=ParseMode.MARKDOWN, )
@@ -223,17 +229,18 @@ def generate_buttons(update: Update, context: CallbackContext):
                                               reply_markup=reply_markup)
 
 
-def admin_panel(update: Update, context: CallbackContext, choice, keyboard, query):
+def admin_panel(update, context: CallbackContext, choice, keyboard, query):
     if choice == 'start':
         keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
         keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
-
+    
     if choice == 'send_message':
         keyboard.append([InlineKeyboardButton('see all yours users', callback_data='all_my_users')])
         keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
+        keyboard.append([InlineKeyboardButton('back', callback_data='start')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
@@ -247,8 +254,17 @@ def admin_panel(update: Update, context: CallbackContext, choice, keyboard, quer
                                               reply_markup=InlineKeyboardMarkup(keyboard))
     for i in data.keys():
         if choice == i:
-            context.bot.send_message(text=f'@{i}', chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
+            pass
+            # temp_user = i
+            # context.bot.send_message(text=f'u picked @{i}. write a message you wanna send to him/her/them',
+            #                          chat_id=query.message.chat_id,
+            #                          parse_mode=ParseMode.MARKDOWN)
+            # print(update.effective_message)
+            # # context.bot.send_message(text=f'{query.message.text}',
+            # #                          chat_id='5331730101',
+            # #                          parse_mode=ParseMode.MARKDOWN
+            # #                          )
+    
     if choice == 'all_users':
         for i in users:
             keyboard.append([InlineKeyboardButton(users[i], callback_data=i)])
