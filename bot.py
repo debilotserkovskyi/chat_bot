@@ -25,6 +25,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
+MESSAGE, PHOTO, LOCATION, BIO = range(4)
 
 # dict to save users how sends start command
 with open('users.txt', 'r') as f:
@@ -86,6 +87,14 @@ def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
     print(username)
+    
+    if username == os.environ['boss']:
+        context.bot.send_message(text="hehe",
+                                 reply_markup=InlineKeyboardMarkup(
+                                     [[InlineKeyboardButton('start admin', callback_data='start')]]),
+                                 chat_id=update.message.chat.id)
+        return admin_panel(update, context)
+    
     if text in ['putin', 'путін', "путин"]:
         if text == 'putin':
             update.message.reply_text('p*tin – huilo')
@@ -97,26 +106,19 @@ def user_check(update, context):
             return menu(update, context)
     
     if text:
-        if username == os.environ['boss']:
-            context.bot.send_message(text="hehe",
-                                     reply_markup=InlineKeyboardMarkup(
-                                         [[InlineKeyboardButton('start admin', callback_data='start')]]),
-                                     chat_id=update.message.chat.id)
-            return generate_buttons(update, context)
-        else:
-            requests.get(f"{resend}\n"
-                         f"messege send: {datetime.datetime.now()}\n"
-                         f"from User: @{update.message.from_user.username}\n"
-                         f"Message: {text}\n"
-                         f"Message id: {update.message.message_id}")
-            update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
-            
-            # check username and continue
-            if username not in allowed_usernames:
-                update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
-            else:
-                update.message.reply_text(f"hi, {update.message.chat.first_name}")
-                return first_buttons(update, context)
+        requests.get(f"{resend}\n"
+                     f"messege send: {datetime.datetime.now()}\n"
+                     f"from User: @{update.message.from_user.username}\n"
+                     f"Message: {text}\n"
+                     f"Message id: {update.message.message_id}")
+        update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
+    
+    # check username and continue
+    if username not in allowed_usernames:
+        update.message.reply_text(f"Sorry, we don't met yet :( \nPress /contact to make it real")
+    else:
+        update.message.reply_text(f"hi, {update.message.chat.first_name}")
+        return first_buttons(update, context)
 
 
 def first_buttons(update, context):
@@ -137,10 +139,6 @@ def generate_buttons(update, context: CallbackContext):
     cat_list = []
     dishes_to_dict = {}
     used = set()
-    
-    # admin section
-    if username == os.environ['boss']:
-        return admin_panel(update=update, context=context, choice=choice, keyboard=keyboard, query=query)
     
     # generate whole menu in MENU button + add random button and back button:
     if choice == 'whole_menu':
@@ -229,8 +227,15 @@ def generate_buttons(update, context: CallbackContext):
                                               reply_markup=reply_markup)
 
 
-def admin_panel(update, context: CallbackContext, choice, keyboard, query):
-    if choice == 'start':
+def admin_panel(update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    choice = query.data
+    keyboard = []
+    print(query)
+    print()
+    print(query.data)
+    if query.data == 'start':
         keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
         keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
@@ -255,10 +260,11 @@ def admin_panel(update, context: CallbackContext, choice, keyboard, query):
     for i in data.keys():
         if choice == i:
             pass
-            # temp_user = i
-            # context.bot.send_message(text=f'u picked @{i}. write a message you wanna send to him/her/them',
-            #                          chat_id=query.message.chat_id,
-            #                          parse_mode=ParseMode.MARKDOWN)
+            temp_user = i
+            context.bot.send_message(text=f'u picked @{i}',
+                                     chat_id=query.message.chat_id,
+                                     parse_mode=ParseMode.MARKDOWN)
+            return MESSAGE
             # print(update.effective_message)
             # # context.bot.send_message(text=f'{query.message.text}',
             # #                          chat_id='5331730101',
@@ -275,12 +281,31 @@ def admin_panel(update, context: CallbackContext, choice, keyboard, query):
                                               reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+def write_message_handler(update: Update, context, chat_id):
+    context.bot.send_message(text='write a message you wanna send to him/her/them',
+                             chat_id=update.effective_chat.id)
+    context.bot.send_message(text=update.message.text,
+                             chat_id=chat_id,
+                             parse_mode=ParseMode.MARKDOWN)
+
+
 def error(update, context):
     print(f"\nupdate {update} \ncaused error {context.error}\n")
 
 
 def questionnaire():
     pass
+
+
+async def cancel_handler(update: Update, context: ContextTypes) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+    logger.info("User %s canceled the conversation.", user.first_name)
+    update.message.reply_text(
+        "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
+    )
+    
+    return ConversationHandler.END
 
 
 def main():
@@ -290,11 +315,24 @@ def main():
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
     dp.add_handler(CommandHandler('repeat', first_buttons))
-
-    dp.add_handler(CommandHandler('admin', admin_panel))
     
-    dp.add_handler(MessageHandler(Filters.text, user_check))
+    dp.add_handler(CommandHandler('admin', admin_panel))
     dp.add_handler(CallbackQueryHandler(generate_buttons))
+    dp.add_handler(CallbackQueryHandler(admin_panel))
+    dp.add_handler(MessageHandler(Filters.text, user_check))
+    #
+    # conv_handler_adm = ConversationHandler(
+    #     entry_points=[CallbackQueryHandler(admin_panel),
+    #                   ],
+    #     states={
+    #         MESSAGE: [MessageHandler(Filters.all, write_message_handler, pass_user_data=True)]
+    #     },
+    #     fallbacks=[
+    #         CommandHandler('cancel', cancel_handler)
+    #     ]
+    # )
+    
+    # dp.add_handler(conv_handler_adm)
     
     dp.add_error_handler(error)
     
