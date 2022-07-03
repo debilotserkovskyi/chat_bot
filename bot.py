@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
-MESSAGE, PHOTO, LOCATION, BIO = range(4)
+USERS_, ADMIN_ = range(2)
 
 # dict to save users how sends start command
 with open('users.txt', 'r') as f:
@@ -86,14 +86,16 @@ def contact(update, context):
 def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
+    print("-" * 10, 'USER_CHECK', '-' * 10)
     print(username)
+    print("-" * 10, 'USER_CHECK', '-' * 10)
     
     if username == os.environ['boss']:
         context.bot.send_message(text="hehe",
                                  reply_markup=InlineKeyboardMarkup(
-                                     [[InlineKeyboardButton('start admin', callback_data='start')]]),
+                                     [[InlineKeyboardButton('start admin', callback_data=str(ADMIN_))]]),
                                  chat_id=update.message.chat.id)
-        return admin_panel(update, context)
+        return ADMIN_
     
     if text in ['putin', 'путін', "путин"]:
         if text == 'putin':
@@ -128,7 +130,7 @@ def first_buttons(update, context):
     ]
     reply_markup_start = InlineKeyboardMarkup(keyboard_start)
     update.message.reply_text("what's up? 🧡", reply_markup=reply_markup_start)
-
+    return USERS_
 
 def generate_buttons(update, context: CallbackContext):
     keyboard = []
@@ -232,9 +234,12 @@ def admin_panel(update, context: CallbackContext):
     query.answer()
     choice = query.data
     keyboard = []
+    print('-' * 10, 'ADMIN', '-' * 10)
     print(query)
     print()
     print(query.data)
+    print('-' * 10, 'ADMIN', '-' * 10)
+    
     if query.data == 'start':
         keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
         keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
@@ -264,7 +269,7 @@ def admin_panel(update, context: CallbackContext):
             context.bot.send_message(text=f'u picked @{i}',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
-            return MESSAGE
+            return
             # print(update.effective_message)
             # # context.bot.send_message(text=f'{query.message.text}',
             # #                          chat_id='5331730101',
@@ -279,6 +284,7 @@ def admin_panel(update, context: CallbackContext):
                                       text="choose a user")
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
+    return cancel_handler(update, context)
 
 
 def write_message_handler(update: Update, context, chat_id):
@@ -290,14 +296,16 @@ def write_message_handler(update: Update, context, chat_id):
 
 
 def error(update, context):
+    print("-" * 10, 'ERROR', '-' * 10)
     print(f"\nupdate {update} \ncaused error {context.error}\n")
+    print("-" * 10, 'ERROR', '-' * 10)
 
 
 def questionnaire():
     pass
 
 
-async def cancel_handler(update: Update, context: ContextTypes) -> int:
+def cancel_handler(update: Update, context) -> int:  # ContextTypes
     """Cancels and ends the conversation."""
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
@@ -315,27 +323,24 @@ def main():
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
     dp.add_handler(CommandHandler('repeat', first_buttons))
-    
+
     dp.add_handler(CommandHandler('admin', admin_panel))
-    dp.add_handler(CallbackQueryHandler(generate_buttons))
-    dp.add_handler(CallbackQueryHandler(admin_panel))
+    # dp.add_handler(CallbackQueryHandler(generate_buttons))
     dp.add_handler(MessageHandler(Filters.text, user_check))
-    #
-    # conv_handler_adm = ConversationHandler(
-    #     entry_points=[CallbackQueryHandler(admin_panel),
-    #                   ],
-    #     states={
-    #         MESSAGE: [MessageHandler(Filters.all, write_message_handler, pass_user_data=True)]
-    #     },
-    #     fallbacks=[
-    #         CommandHandler('cancel', cancel_handler)
-    #     ]
-    # )
-    
-    # dp.add_handler(conv_handler_adm)
-    
+
+    conv_handler_adm = ConversationHandler(
+        entry_points=[MessageHandler(Filters.text, user_check)],
+        states={
+            USERS_: [CallbackQueryHandler(generate_buttons)],
+            ADMIN_: [CallbackQueryHandler(admin_panel)]
+        },
+        fallbacks=[CommandHandler('start', start_command)]
+    )
+    dp.add_handler(conv_handler_adm)
+
+    dp.add_handler(CallbackQueryHandler(admin_panel))
     dp.add_error_handler(error)
-    
+
     updater.start_polling()
     updater.idle()
 
