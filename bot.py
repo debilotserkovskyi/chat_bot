@@ -238,6 +238,7 @@ def generate_buttons(update, context: CallbackContext):
 
 
 def admin_panel(update, context: CallbackContext):
+    print(1111)
     query = update.callback_query
     query.answer()
     choice = query.data
@@ -247,14 +248,13 @@ def admin_panel(update, context: CallbackContext):
     print()
     print(query.data)
     print('-' * 10, 'ADMIN', '-' * 10)
-    
-    if query.data == 'start':
-        keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
-        keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                              message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
-    
+
+    keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
+    keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
+    context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                          message_id=query.message.message_id,
+                                          reply_markup=InlineKeyboardMarkup(keyboard))
+
     if choice == 'send_message':
         keyboard.append([InlineKeyboardButton('see all yours users', callback_data='all_my_users')])
         keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
