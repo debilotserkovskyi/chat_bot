@@ -40,17 +40,18 @@ logged = 0
 
 def start_command(update, context):
     global users
-    
+
     user = update.message.from_user
-    id_ = user['id']
-    name = user['username']
+    print(user)
+    id_ = user.id
+    name = user.username
     if id_ not in users.keys():
         users[str(id_)] = name
-        
+    
         # get users in dict and save them in txt
         with open('users.txt', 'w') as s:
             s.write(str(users))
-    
+
     update.message.reply_text("it's me, your pocket lina!\nfollow the bot i hope you'll like it")
     update.message.reply_text("or press /help to get info about this bot")
     
@@ -76,27 +77,8 @@ def help_command(update, context):
                              reply_markup=ReplyKeyboardMarkup(buttons))
 
 
-def contact(update, context):
-    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
-                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
-    reply_markup_start = InlineKeyboardMarkup(contact_button)
-    update.message.reply_text("here:", reply_markup=reply_markup_start)
-
-
-def user_check(update, context):
+def text_conv(update, context):
     text = str(update.message.text).lower()
-    username = update.message.from_user.username
-    print("-" * 10, 'USER_CHECK', '-' * 10)
-    print(username)
-    print("-" * 10, 'USER_CHECK', '-' * 10)
-    
-    if username == os.environ['boss']:
-        context.bot.send_message(text="hehe",
-                                 reply_markup=InlineKeyboardMarkup(
-                                     [[InlineKeyboardButton('start admin', callback_data=str(ADMIN_))]]),
-                                 chat_id=update.message.chat.id)
-        return ADMIN_
-    
     if text in ['putin', 'путін', "путин"]:
         if text == 'putin':
             update.message.reply_text('p*tin – huilo')
@@ -113,7 +95,31 @@ def user_check(update, context):
                      f"from User: @{update.message.from_user.username}\n"
                      f"Message: {text}\n"
                      f"Message id: {update.message.message_id}")
+        print(update.message.from_user)
         update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
+
+
+def contact(update, context):
+    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
+                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
+    reply_markup_start = InlineKeyboardMarkup(contact_button)
+    update.message.reply_text("here:", reply_markup=reply_markup_start)
+
+
+def user_check(update, context):
+    username = update.message.from_user.username
+    print(update.message.from_user)
+    print("-" * 10, 'USER_CHECK', '-' * 10)
+    print(username)
+    print(ADMIN_)
+    print("-" * 10, 'USER_CHECK', '-' * 10)
+    
+    if username == os.environ['boss']:
+        context.bot.send_message(text="hehe",
+                                 reply_markup=InlineKeyboardMarkup(
+                                     [[InlineKeyboardButton('start admin', callback_data=str(ADMIN_))]]),
+                                 chat_id=update.message.chat.id)
+        return ADMIN_
     
     # check username and continue
     if username not in allowed_usernames:
@@ -132,10 +138,12 @@ def first_buttons(update, context):
     update.message.reply_text("what's up? 🧡", reply_markup=reply_markup_start)
     return USERS_
 
+
 def generate_buttons(update, context: CallbackContext):
     keyboard = []
     query = update.callback_query
-    username = query.from_user.username
+    username = update.effective_message.chat.username
+    print(username)
     query.answer()
     choice = query.data
     cat_list = []
@@ -307,6 +315,8 @@ def questionnaire():
 
 def cancel_handler(update: Update, context) -> int:  # ContextTypes
     """Cancels and ends the conversation."""
+    print('-' * 10, 'end', '10' * 10)
+    print('-' * 10, 'end', '10' * 10)
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text(
@@ -323,18 +333,19 @@ def main():
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
     dp.add_handler(CommandHandler('repeat', first_buttons))
-
-    dp.add_handler(CommandHandler('admin', admin_panel))
-    # dp.add_handler(CallbackQueryHandler(generate_buttons))
-    dp.add_handler(MessageHandler(Filters.text, user_check))
-
+    
+    # dp.add_handler(CommandHandler('admin', admin_panel))
+    dp.add_handler(MessageHandler(Filters.text, text_conv))
+    
     conv_handler_adm = ConversationHandler(
-        entry_points=[MessageHandler(Filters.text, user_check)],
+        entry_points=[CommandHandler('user', user_check)],
         states={
             USERS_: [CallbackQueryHandler(generate_buttons)],
             ADMIN_: [CallbackQueryHandler(admin_panel)]
         },
-        fallbacks=[CommandHandler('start', start_command)]
+        fallbacks=[CommandHandler('user', user_check)],
+        per_message=True,
+        per_user=True
     )
     dp.add_handler(conv_handler_adm)
 
