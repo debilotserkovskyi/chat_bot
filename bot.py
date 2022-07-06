@@ -60,32 +60,6 @@ def start_command(update, context):
     return user_check(update, context)
 
 
-def menu(update, context):
-    buttons = [[KeyboardButton("/repeat")],
-               [KeyboardButton("/contact")],
-               [KeyboardButton("/help")],
-               ]
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='when you will be ready we can tap any button',
-                             reply_markup=ReplyKeyboardMarkup(buttons))
-
-
-def help_command(update, context):
-    buttons = [[KeyboardButton("/start")],
-               [KeyboardButton("/contact")]]
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='if you need help write me in inst or wherever\n'
-                                  'also you can start over or get my contacts',
-                             reply_markup=ReplyKeyboardMarkup(buttons))
-
-
-def contact(update, context):
-    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
-                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
-    reply_markup_start = InlineKeyboardMarkup(contact_button)
-    update.message.reply_text("here:", reply_markup=reply_markup_start)
-
-
 def user_check(update, context):
     text = str(update.message.text).lower()
     username = update.message.from_user.username
@@ -289,6 +263,32 @@ def error(update, context):
 
 def questionnaire():
     pass
+
+
+def menu(update, context):
+    buttons = [[KeyboardButton("/repeat")],
+               [KeyboardButton("/contact")],
+               [KeyboardButton("/help")],
+               ]
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text='when you will be ready we can tap any button',
+                             reply_markup=ReplyKeyboardMarkup(buttons))
+
+
+def help_command(update, context):
+    buttons = [[KeyboardButton("/start")],
+               [KeyboardButton("/contact")]]
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text='if you need help write me in inst or wherever\n'
+                                  'also you can start over or get my contacts',
+                             reply_markup=ReplyKeyboardMarkup(buttons))
+
+
+def contact(update, context):
+    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
+                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
+    reply_markup_start = InlineKeyboardMarkup(contact_button)
+    update.message.reply_text("here:", reply_markup=reply_markup_start)
 
 
 def main():
