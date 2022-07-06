@@ -57,6 +57,7 @@ def start_command(update, context):
     print("-" * 10, 'USER_CHECK', '-' * 10)
     print(name)
     print("-" * 10, 'USER_CHECK', '-' * 10)
+    return user_check(update, context)
 
 
 def menu(update, context):
