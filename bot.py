@@ -52,13 +52,6 @@ def start_command(update, context):
         with open('users.txt', 'w') as s:
             s.write(str(users))
 
-    update.message.reply_text("hey, foodie 🧡")
-    update.message.reply_text("welcome to ALTER | NATIVE | PROJECT.")
-
-    print(update.message.from_user)
-    print("-" * 10, 'USER_CHECK', '-' * 10)
-    print(name)
-    print("-" * 10, 'USER_CHECK', '-' * 10)
     return user_check(update, context)
 
 
@@ -93,20 +86,11 @@ def user_check(update, context):
 
     # check username and continue
     if username not in allowed_usernames:
-        return conv_start(update, context)
+        update.message.reply_text(f"hey, foodie 🧡")
+        return  # conv_start(update, context)
     else:
         update.message.reply_text(f"hi, {update.message.chat.first_name}")
         return first_buttons(update, context)
-
-
-# starts conv handler
-def conv_start(update: Update, context: CallbackContext):
-    update.message.reply_text(f"hey, foodie 🧡")
-    buttons = [[InlineKeyboardButton(text='YES!', callback_data=str(YES))],
-               [InlineKeyboardButton(text='wanna chat w/ LINA', callback_data=contact)]]
-    update.message.reply_text(text='welcome to ALTER|NATIVE|PROJECT\nwanna buy a menu?',
-                              reply_markup=InlineKeyboardMarkup(buttons))
-    return YES
 
 
 def first_buttons(update, context):
@@ -298,10 +282,6 @@ def error(update, context):
     print("-" * 10, 'ERROR', '-' * 10)
 
 
-def questionnaire():
-    pass
-
-
 def menu(update, context):
     buttons = [[KeyboardButton("/repeat")],
                [KeyboardButton("/contact")],
@@ -328,27 +308,12 @@ def contact(update, context):
     update.message.reply_text("here:", reply_markup=reply_markup_start)
 
 
-
-# ends covenversation handler
-def conv_end():
-    pass
-
-
 def main():
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('start', start_command))
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
-
-    conv_hand = ConversationHandler(entry_points=[CommandHandler('conv_start', conv_start)],
-                                    states={
-                                        YES: [CommandHandler('conv_start', conv_start)],
-                                        CONTACT: [CommandHandler('contact', contact)],
-                                    },
-                                    fallbacks=[CommandHandler('conv_end', conv_end)])
-
-    dp.add_handler(conv_hand)
 
     dp.add_handler(CommandHandler('admin', admin_panel))
 
