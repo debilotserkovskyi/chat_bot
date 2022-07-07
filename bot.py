@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 allowed_usernames = list(data.keys())
 admins = []
 
+YES, CONTACT = range(2)
+
 # dict to save users how sends start command
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -73,8 +75,8 @@ def user_check(update, context):
             update.message.reply_text('п*тін - хуйло')
             time.sleep(1)
             return menu(update, context)
-    
-    if text:
+
+    if text and not ['/start', '/contact']:
         if username == os.environ['boss']:
             context.bot.send_message(text="hehe",
                                      reply_markup=InlineKeyboardMarkup(
@@ -89,24 +91,31 @@ def user_check(update, context):
                          f"Message id: {update.message.message_id}")
             update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
 
-        # check username and continue
-        if username not in allowed_usernames:
-            update.message.reply_text(f"Sorry, we don't met yet :( \nPress here is my contacts to make it real")
-            return contact(update, context)
-        else:
-            first_keyboard = [[InlineKeyboardButton('YES!', callback_data='buy_menu')],
-                              [InlineKeyboardButton('wanna chat w/ LINA before', callback_data='contacts')]]
-            update.message.reply_text('wanna buy a menu?', reply_markup=InlineKeyboardMarkup(first_keyboard))
-            return generate_buttons(update, context)
+    # check username and continue
+    if username not in allowed_usernames:
+        return conv_start(update, context)
+    else:
+        update.message.reply_text(f"hi, {update.message.chat.first_name}")
+        return first_buttons(update, context)
 
 
-# def first_buttons(update, context):
-#     keyboard_start = [[
-#         InlineKeyboardButton("I want to assemble my bento for tomorrow", callback_data='01'),
-#     ], [InlineKeyboardButton("I want to see my whole bento menu 🍱 ", callback_data='whole_menu')]
-#     ]
-#     reply_markup_start = InlineKeyboardMarkup(keyboard_start)
-#     update.message.reply_text("what's up? 🧡", reply_markup=reply_markup_start)
+# starts conv handler
+def conv_start(update: Update, context: CallbackContext):
+    update.message.reply_text(f"hey, foodie 🧡")
+    buttons = [[InlineKeyboardButton(text='YES!', callback_data=str(YES))],
+               [InlineKeyboardButton(text='wanna chat w/ LINA', callback_data=contact)]]
+    update.message.reply_text(text='welcome to ALTER|NATIVE|PROJECT\nwanna buy a menu?',
+                              reply_markup=InlineKeyboardMarkup(buttons))
+    return YES
+
+
+def first_buttons(update, context):
+    keyboard_start = [[
+        InlineKeyboardButton("I want to assemble my bento for tomorrow", callback_data='01'),
+    ], [InlineKeyboardButton("I want to see my whole bento menu 🍱 ", callback_data='whole_menu')]
+    ]
+    reply_markup_start = InlineKeyboardMarkup(keyboard_start)
+    update.message.reply_text("what's up? 🧡", reply_markup=reply_markup_start)
 
 
 def generate_buttons(update, context: CallbackContext):
@@ -233,6 +242,7 @@ def generate_buttons(update, context: CallbackContext):
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
                                               message_id=query.message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
+    return
 
 
 def admin_panel(update, context: CallbackContext, choice, keyboard, query):
@@ -318,10 +328,6 @@ def contact(update, context):
     update.message.reply_text("here:", reply_markup=reply_markup_start)
 
 
-# starts conv handler
-def conv_start():
-    pass
-
 
 # ends covenversation handler
 def conv_end():
@@ -334,21 +340,23 @@ def main():
     dp.add_handler(CommandHandler('start', start_command))
     dp.add_handler(CommandHandler('help', help_command))
     dp.add_handler(CommandHandler('contact', contact))
-    
+
     conv_hand = ConversationHandler(entry_points=[CommandHandler('conv_start', conv_start)],
                                     states={
-                                        1: [],
-                                        2: [],
+                                        YES: [CommandHandler('conv_start', conv_start)],
+                                        CONTACT: [CommandHandler('contact', contact)],
                                     },
                                     fallbacks=[CommandHandler('conv_end', conv_end)])
-    
+
+    dp.add_handler(conv_hand)
+
     dp.add_handler(CommandHandler('admin', admin_panel))
-    
+
     dp.add_handler(MessageHandler(Filters.text, user_check))
     dp.add_handler(CallbackQueryHandler(generate_buttons))
-    
+
     dp.add_error_handler(error)
-    
+
     updater.start_polling()
     updater.idle()
 
