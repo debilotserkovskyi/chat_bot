@@ -87,7 +87,14 @@ def user_check(update, context):
     # check username and continue
     if username not in allowed_usernames:
         update.message.reply_text(f"hey, foodie 🧡")
-        return  # conv_start(update, context)
+        keyboard_start = [[
+            InlineKeyboardButton("YES", callback_data='yes'),
+        ], [InlineKeyboardButton("wanna chat w/ LINA", callback_data='contacts')]
+        ]
+        reply_markup_start = InlineKeyboardMarkup(keyboard_start)
+        update.message.reply_text("welcome to ALTER | NATIVE | PROJECT.\nwanna buy a menu?",
+                                  reply_markup=reply_markup_start)
+        return generate_buttons(update, context)
     else:
         update.message.reply_text(f"hi, {update.message.chat.first_name}")
         return first_buttons(update, context)
@@ -112,84 +119,87 @@ def generate_buttons(update, context: CallbackContext):
     cat_list = []
     dishes_to_dict = {}
     used = set()
-    
+
     # admin section
     if username == os.environ['boss']:
         return admin_panel(update=update, context=context, choice=choice, keyboard=keyboard, query=query)
-    
+
     # generate whole menu in MENU button + add random button and back button:
-    if choice == 'whole_menu':
-        for i in data[username]:
-            keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
-        keyboard.append([InlineKeyboardButton('random', callback_data='random')])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="here is your whole menu")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
+    if username in allowed_usernames:
+        if choice == 'whole_menu':
+            for i in data[username]:
+                keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
+            keyboard.append([InlineKeyboardButton('random', callback_data='random')])
+            keyboard.append([InlineKeyboardButton('back', callback_data='back')])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                          text="here is your whole menu")
+            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                                  reply_markup=reply_markup)
     
-    # generate base bento (rice, etc):
-    if choice == '01':
-        for i in range(len(data[username])):
-            cat_list.append(data[username][i]['category'])
-            unique_categories = [x for x in cat_list if x not in used and (used.add(x) or True)]
-            for category in unique_categories:
-                keyboard.append([InlineKeyboardButton(str(category),
-                                                      callback_data=data[username][i]['category'])])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="chose the bento base")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
-
-    for i in data[username]:
-        dishes_to_dict[i['category']] = []
-    for i in data[username]:
-        dishes_to_dict[i['category']].append(i['name'])
-
-    # send ingredients and recipy to the client depends on recipy was chosen
-    for i in data[username]:
-        if choice in i['callback']:
-            context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
+        # generate base bento (rice, etc):
+        if choice == '01':
+            for i in range(len(data[username])):
+                cat_list.append(data[username][i]['category'])
+                unique_categories = [x for x in cat_list if x not in used and (used.add(x) or True)]
+                for category in unique_categories:
+                    keyboard.append([InlineKeyboardButton(str(category),
+                                                          callback_data=data[username][i]['category'])])
+            keyboard.append([InlineKeyboardButton('back', callback_data='back')])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                          text="chose the bento base")
+            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
+                                                  reply_markup=reply_markup)
+        for i in data[username]:
+            dishes_to_dict[i['category']] = []
+        for i in data[username]:
+            dishes_to_dict[i['category']].append(i['name'])
+    
+        # send ingredients and recipy to the client depends on recipy was chosen
+        for i in data[username]:
+            if choice in i['callback']:
+                context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
+                                         chat_id=query.message.chat_id,
+                                         parse_mode=ParseMode.MARKDOWN)
+                context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
+                                             timeout=1)
+                time.sleep(2)
+                context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
+                                         parse_mode=ParseMode.MARKDOWN)
+                context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
+                                             timeout=1)
+                time.sleep(2)
+                context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
+                                         parse_mode=ParseMode.MARKDOWN, )
+        
+            # generate 2 dish names depends on category is
+            if choice in i['category']:
+                keyboard_new = i['name']
+                keyboard.append([InlineKeyboardButton(keyboard_new, callback_data=i['callback'])])
+                context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                                      message_id=query.message.message_id,
+                                                      reply_markup=InlineKeyboardMarkup(keyboard))
+                if len(keyboard) == len(dishes_to_dict[choice]):
+                    keyboard.append([InlineKeyboardButton('back', callback_data='01')])
+                    context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
+                                                          message_id=query.message.message_id,
+                                                          reply_markup=InlineKeyboardMarkup(keyboard))
+    
+        # send a random ingredient and recipy to the client
+        if choice == 'random':
+            rand = random.randint(0, len(data[username]))
+            context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
             context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
             time.sleep(2)
-            context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
+            context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
             context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
             time.sleep(2)
-            context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
+            context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-        
-        # generate 2 dish names depends on category is
-        if choice in i['category']:
-            keyboard_new = i['name']
-            keyboard.append([InlineKeyboardButton(keyboard_new, callback_data=i['callback'])])
-            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                                  reply_markup=InlineKeyboardMarkup(keyboard))
-            if len(keyboard) == len(dishes_to_dict[choice]):
-                keyboard.append([InlineKeyboardButton('back', callback_data='01')])
-                context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                                      message_id=query.message.message_id,
-                                                      reply_markup=InlineKeyboardMarkup(keyboard))
-    
-    # send a random ingredient and recipy to the client
-    if choice == 'random':
-        rand = random.randint(0, len(data[username]))
-        context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
-                                 chat_id=query.message.chat_id,
-                                 parse_mode=ParseMode.MARKDOWN)
-        context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
-        time.sleep(2)
-        context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
-                                 parse_mode=ParseMode.MARKDOWN)
-        context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
-        time.sleep(2)
-        context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
-                                 parse_mode=ParseMode.MARKDOWN, )
     
     # return to the main menu (dunno and whole menu)
     if choice == 'back':
