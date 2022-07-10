@@ -1,4 +1,4 @@
 python-telegram-bot==13.13
 urllib3==1.26.9
 requests==2.28.0
-telegram >=
+opencage==2.0.0
