@@ -14,8 +14,8 @@ API_GEO = os.environ.get('geo_api')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE = range(7)
-COOK, WOULD_LOVE, SHOPPING = range(7, 10)
+WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
+WHERE, TOP, FAV, BUDGET = range(10, 14)
 
 HI = range(4, 5)
 
@@ -151,10 +151,8 @@ def loc_check(update: Update, context: CallbackContext):
         return LOCATION
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
-    print(4)
-    print(update.effective_chat.id)
     context.user_data['allegies'] = update.message.text
     if update.message.text:
         update.message.reply_text('do you love to cook?',
@@ -163,12 +161,19 @@ def fifth_que(update: Update, context: CallbackContext):
         return COOK
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks about shopping
 def eighth_que(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     if query.data == 'y':
         context.user_data['cook'] = 'YES'
+        context.bot.edit_message_text('do you enjoy food shopping?',
+                                      reply_markup=InlineKeyboardMarkup(
+                                          [[InlineKeyboardButton('yep', callback_data='y')],
+                                           [InlineKeyboardButton('hate', callback_data='n')]]
+                                      ),
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
         return SHOPPING
     elif query.data == 'n':
         context.user_data['cook'] = 'nope'
@@ -181,29 +186,70 @@ def eighth_que(update: Update, context: CallbackContext):
         return WOULD_LOVE
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>> if user dont like to cook and asks about shoping
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
         context.user_data['cook_study'] = 'I would like'
-        return SHOPPING
     elif update.callback_query.data == 'n':
         context.user_data['cook_study'] = 'never'
         context.bot.edit_message_text('sad :(',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
-        return SHOPPING
-
-
-# >>>>>>>>>>>>>>>>>>>>>>>
-def nineth_que(update: Update, context: CallbackContext):
+    
     context.bot.edit_message_text('do you enjoy food shopping?',
-                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep', callback_data='y')],
-                                                                     [InlineKeyboardButton('hate', callback_data='n')]]
-                                                                    ),
+                                  reply_markup=InlineKeyboardMarkup(
+                                      [[InlineKeyboardButton('yep', callback_data='y')],
+                                       [InlineKeyboardButton('hate', callback_data='n')]]
+                                  ),
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id)
+    return SHOPPING
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks goes to top-4
+def nineth_que(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    
+    if update.callback_query.data == 'y':
+        context.user_data['shoping'] = 'I do'
+        context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return WHERE
+    elif update.callback_query.data == 'n':
+        context.user_data['shoping'] = "I don't"
+    
+    context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
+                                  reply_markup=None,
+                                  chat_id=update.effective_chat.id,
+                                  message_id=update.effective_message.message_id)
+    return TOP
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> if he likes asks where user buys and goes to top-4
+def where_shop(update: Update, context: CallbackContext):
+    context.user_data['where'] = update.message.text
+    update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
+                              reply_markup=None)
+    return TOP
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
+def tenth_que(update: Update, context: CallbackContext):
+    context.user_data['top-4'] = update.message.text
+    update.message.reply_text(text='do you have your favorite/traditional meals? '
+                                   '(ex. if you’re eating same kind of breakfast everyday)')
+    return FAV
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about fav and goes to budget
+def eleventh_que(update: Update, context: CallbackContext):
+    context.user_data['fav'] = update.message.text
+    print(context.user_data)
+    return cancel(update, context)
 
 
 # --------------------------------------------------------------------
@@ -254,6 +300,9 @@ def main():
             COOK: [CallbackQueryHandler(eighth_que)],
             WOULD_LOVE: [CallbackQueryHandler(would_you)],
             SHOPPING: [CallbackQueryHandler(nineth_que)],
+            WHERE: [MessageHandler(Filters.text, where_shop)],
+            TOP: [MessageHandler(Filters.text, tenth_que)],
+            FAV: [MessageHandler(Filters.text, eleventh_que)],
     
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
