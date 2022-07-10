@@ -2,7 +2,7 @@ import logging
 import os
 from re import match
 
-import telegram
+from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
 
@@ -14,7 +14,8 @@ API_GEO = os.environ.get('geo_api')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-WELCOME, YES, YALLA, EMAIL, LOCATION = range(5)
+WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE = range(7)
+COOK, SHOPPING = range(7, 9)
 
 HI = range(4, 5)
 
@@ -99,12 +100,75 @@ def third_que(update: Update, context: CallbackContext):
 
 
 def forth_que(update: Update, context: CallbackContext):
-    if update.message.text is not None:
+    print(1)
+    if update.message.text:
+        print(2)
         context.user_data['location'] = update.message.text
+        return LIKE
     else:
         lat = context.user_data['location_lat'] = update.message.location.latitude
         lon = context.user_data['location_long'] = update.message.location.longitude
-        telegram.ReplyKeyboardRemove(True)
+        geo_coder = OpenCageGeocode(API_GEO)
+        results = geo_coder.reverse_geocode(lat, lon)
+        
+        context.bot.send_message(text=f"so, you are in {results[0]['components']['country']}, "
+                                      f"{results[0]['components']['state']}, {results[0]['components']['town']}, "
+                                      f"right?",
+                                 chat_id=update.effective_chat.id,
+                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
+                                                                    [InlineKeyboardButton('n', callback_data='n')]]))
+        context.user_data['country'] = results[0]['components']['country']
+        context.user_data['state'] = results[0]['components']['state']
+        context.user_data['town'] = results[0]['components']['town']
+        return LOC_CHECK
+
+
+def loc_check(update: Update, context: CallbackContext):
+    print(3)
+    query = update.callback_query
+    query.answer()
+    if query.data == 'y':
+        context.bot.edit_message_text('do you have allergies or products you don’t like (and even hate)?\n'
+                                      'write it down in a single message',
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return LIKE
+    elif query.data == 'n':
+        context.bot.edit_message_text('then maybe try to write it manually?',
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return LOCATION
+    return LIKE
+
+
+def fifth_que(update: Update, context: CallbackContext):
+    print(4)
+    context.user_data['allegies'] = update.message.text
+    context.bot.send_message('do you love to cook?',
+                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
+                                                                [InlineKeyboardButton('n', callback_data='n')]]),
+                             chat_id=update.effective_chat.id)
+    return COOK
+
+
+def eighth_que(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    if query.data == 'y':
+        return SHOPPING
+    elif query.data == 'n':
+        context.bot.edit_message_text('would you like to start loving it?😉',
+                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
+                                                                         [InlineKeyboardButton('n', callback_data='n')]]
+                                                                        ),
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+
+
+def nineth_que(update: Update, context: CallbackContext):
+    pass
 
 
 # --------------------------------------------------------------------
@@ -149,8 +213,12 @@ def main():
             YES: [CallbackQueryHandler(yalla)],
             YALLA: [MessageHandler(Filters.text, second_que)],
             EMAIL: [MessageHandler(Filters.text, third_que)],
-            LOCATION: [MessageHandler(Filters.text | Filters.location, forth_que)],
-            
+            LOCATION: [MessageHandler(Filters.text, forth_que)],
+            LOC_CHECK: [CallbackQueryHandler(loc_check)],
+            LIKE: [MessageHandler(Filters.text, fifth_que)],
+            COOK: [CallbackQueryHandler(eighth_que)],
+            SHOPPING: [CallbackQueryHandler(nineth_que)],
+    
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
         },
