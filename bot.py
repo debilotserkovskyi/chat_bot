@@ -1,341 +1,163 @@
-import datetime
 import logging
 import os
-import random
-import time
-from ast import literal_eval
+from re import match
 
-import requests
 import telegram
 from telegram import *
 from telegram.ext import *
 
 from data import data
 
-TOKEN = os.environ['TELEGRAM_TOKEN']
-ADMIN = os.environ['USER_ID']
-resend = f'https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={ADMIN}&text='
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
+API_GEO = os.environ.get('geo_api')
 
-BASE_URL = "https://api.telegram.org/bot{}".format(TOKEN)
-
-# Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-logger = logging.getLogger(__name__)
-allowed_usernames = list(data.keys())
-admins = []
+WELCOME, YES, YALLA, EMAIL, LOCATION = range(5)
 
-YES, CONTACT = range(2)
-MENU, CALLBACK_1, CALLBACK_2 = range(3)
+HI = range(4, 5)
 
-# dict to save users how sends start command
-with open('users.txt', 'r') as f:
-    all_ = f.read()
-    if len(all_) == 0:
-        users = {}
+
+def start(update: Update, context):
+    user = update.effective_message.from_user.username
+    if user not in data.keys():
+        return wanna_buy(update, context)
     else:
-        users = literal_eval(all_)
-
-logged = 0
+        return watsup(update, context)
 
 
-def start_command(update, context):
-    global users
-
-    user = update.message.from_user
-    id_ = user.id
-    name = user.username
-    if id_ not in users.keys():
-        users[str(id_)] = name
-    
-        # get users in dict and save them in txt
-        with open('users.txt', 'w') as s:
-            s.write(str(users))
-
-    return user_check(update, context)
+# --------------------------------------------------------------------
+def wanna_buy(update: Update, context):
+    reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
+                    [InlineKeyboardButton('contact', callback_data='contact')]]
+    update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | PROJECT. wanna buy a menu?',
+                                        reply_markup=InlineKeyboardMarkup(reply_markup))
+    return WELCOME
 
 
-def user_check(update, context):
-    text = str(update.message.text).lower()
-    username = update.message.from_user.username
-    if text in ['putin', 'путін', "путин"]:
-        if text == 'putin':
-            update.message.reply_text('p*tin – huilo')
-            time.sleep(1)
-            return menu(update, context)
-        elif text == 'путін' or 'путин':
-            update.message.reply_text('п*тін - хуйло')
-            time.sleep(1)
-            return menu(update, context)
-
-    if text and not ['/start', '/contact', '/help']:
-        if username == os.environ['boss']:
-            context.bot.send_message(text="hehe",
-                                     reply_markup=InlineKeyboardMarkup(
-                                         [[InlineKeyboardButton('start admin', callback_data='start')]]),
-                                     chat_id=update.message.chat.id)
-            return generate_buttons(update, context)
-        else:
-            requests.get(f"{resend}\n"
-                         f"messege send: {datetime.datetime.now()}\n"
-                         f"from User: @{update.message.from_user.username}\n"
-                         f"Message: {text}\n"
-                         f"Message id: {update.message.message_id}")
-            update.message.reply_text("I'm not actually a real person I'm a bot, so I can't understand what you sent")
-
-    # check username and continue
-    if username not in allowed_usernames:
-        update.message.reply_text(f"hey, foodie 🧡")
-        keyboard_start = [[
-            InlineKeyboardButton("YES", callback_data='yes'),
-        ], [InlineKeyboardButton("wanna chat w/ LINA", callback_data='contacts')]
-        ]
-        reply_markup_start = InlineKeyboardMarkup(keyboard_start)
-        update.message.reply_text("welcome to ALTER | NATIVE | PROJECT.\nwanna buy a menu?",
-                                  reply_markup=reply_markup_start)
-        return generate_buttons(update, context)
-    else:
-        update.message.reply_text(f"hi, {update.message.chat.first_name}")
-        return first_buttons(update, context)
-
-
-def first_buttons(update, context):
-    keyboard_start = [[
-        InlineKeyboardButton("I want to assemble my bento for tomorrow", callback_data='01'),
-    ], [InlineKeyboardButton("I want to see my whole bento menu 🍱 ", callback_data='whole_menu')]
-    ]
-    reply_markup_start = InlineKeyboardMarkup(keyboard_start)
-    context.bot.send_message(text="what's up? 🧡", reply_markup=reply_markup_start,
-                             chat_id=update.effective_message.chat.id)
-    return generate_buttons(update, context)
-
-
-def generate_buttons(update, context: CallbackContext):
-    keyboard = []
+def first_que(update: Update, context: CallbackContext):
     query = update.callback_query
-    username = update.effective_message.chat.username
     query.answer()
-    choice = query.data
-    cat_list = []
-    dishes_to_dict = {}
-    used = set()
-    print(choice)
-
-    # admin section
-    # if username == os.environ['boss']:
-    #     return admin_panel(update=update, context=context, choice=choice, keyboard=keyboard, query=query)
-
-    # generate whole menu in MENU button + add random button and back button:
-    if choice == 'whole_menu':
-        for i in data[username]:
-            keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
-        keyboard.append([InlineKeyboardButton('random', callback_data='random')])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="here is your whole menu")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
-
-    # generate base bento (rice, etc):
-    if choice == '01':
-        for i in range(len(data[username])):
-            cat_list.append(data[username][i]['category'])
-            unique_categories = [x for x in cat_list if x not in used and (used.add(x) or True)]
-            for category in unique_categories:
-                keyboard.append([InlineKeyboardButton(str(category),
-                                                      callback_data=data[username][i]['category'])])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="chose the bento base")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
-    for i in data[username]:
-        dishes_to_dict[i['category']] = []
-    for i in data[username]:
-        dishes_to_dict[i['category']].append(i['name'])
-
-    # send ingredients and recipy to the client depends on recipy was chosen
-    for i in data[username]:
-        if choice in i['callback']:
-            context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
-                                     chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
-                                         timeout=1)
-            time.sleep(2)
-            context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
-                                         timeout=1)
-            time.sleep(2)
-            context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN, )
+    print(query.data)
+    if query.data == 'YES':
+        yalla_b = [[InlineKeyboardButton('yalla', callback_data='yalla')]]
+        context.bot.edit_message_text(
+            text='oh yeah! so get ready for a food questionnaire to create your menu the most '
+                 'suitable to your FOOD LIFESTYLE, your tastes and the current season.',
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id,
+            reply_markup=InlineKeyboardMarkup(yalla_b))
     
-        # generate 2 dish names depends on category is
-        if choice in i['category']:
-            keyboard_new = i['name']
-            keyboard.append([InlineKeyboardButton(keyboard_new, callback_data=i['callback'])])
-            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                                  message_id=query.message.message_id,
-                                                  reply_markup=InlineKeyboardMarkup(keyboard))
-            if len(keyboard) == len(dishes_to_dict[choice]):
-                keyboard.append([InlineKeyboardButton('back', callback_data='01')])
-                context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                                      message_id=query.message.message_id,
-                                                      reply_markup=InlineKeyboardMarkup(keyboard))
-    
-        # send a random ingredient and recipy to the client
-        if choice == 'random':
-            rand = random.randint(0, len(data[username]))
-            context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
-                                     chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
-            time.sleep(2)
-            context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
-            time.sleep(2)
-            context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN, )
-    
-    # return to the main menu (dunno and whole menu)
-    if choice == 'back':
-        keyboard_start = [[
-            InlineKeyboardButton("base bento", callback_data='01'),
-        ], [InlineKeyboardButton("my WHOLE bento menu", callback_data='whole_menu')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard_start)
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="what's up?")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=reply_markup)
-    
-    if choice == 'contacts':
+    if query.data == 'contact':
         contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
-                          [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')],
-                          [InlineKeyboardButton('back', callback_data='first_keyboard')]]
-        
+                          [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
         reply_markup_start = InlineKeyboardMarkup(contact_button)
-        context.bot.edit_message_text(text="so:",
-                                      message_id=query.message.message_id,
-                                      chat_id=query.message.chat_id)
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                              message_id=query.message.message_id,
-                                              reply_markup=reply_markup_start)
+        context.bot.send_message(text="here:", reply_markup=reply_markup_start,
+                                 chat_id=update.effective_chat.id)
+        return cancel(update, context)
     
-    if choice == 'first_keyboard':
-        keyboard.append([InlineKeyboardButton('YES!', callback_data='buy_menu')])
-        keyboard.append([InlineKeyboardButton('wanna chat w/ LINA before', callback_data='contacts')])
+    return YES
+
+
+def yalla(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    if query.data == 'yalla':
+        context.bot.edit_message_text(text='first, let me get to know you:) what’s your name and surname?'
+                                           '\n(type everything in one message)',
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+    return YALLA
+
+
+def second_que(update: Update, context: CallbackContext):
+    context.user_data['name'] = update.message.text
+    if update.message.text:
+        context.bot.send_message(text='e-mail?',
+                                 chat_id=update.effective_chat.id)
+        return EMAIL
+
+
+def third_que(update: Update, context: CallbackContext):
+    pattern = '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
+              '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
+    
+    if match(pattern, update.message.text):
+        context.user_data['email'] = update.message.text
+        loc = [[KeyboardButton('send location', request_location=True, )]]
+        context.bot.send_message(text='ok!\ncountry and city you currently reside?(u may use button location)',
+                                 chat_id=update.effective_chat.id,
+                                 reply_markup=ReplyKeyboardMarkup(loc, one_time_keyboard=True))
         
-        context.bot.edit_message_text(text="wanna buy a menu?",
-                                      message_id=query.message.message_id,
-                                      chat_id=query.message.chat_id)
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                              message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
-    return stop_user(update, context)
+        return LOCATION
+    else:
+        context.bot.send_message(text="i can't understand this email, try again plz",
+                                 chat_id=update.effective_chat.id)
+        return EMAIL
 
 
-def admin_panel(update, context: CallbackContext, choice, keyboard, query):
-    if choice == 'start':
-        keyboard.append([InlineKeyboardButton('send message to a user', callback_data='send_message')])
-        keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                              message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
-    
-    if choice == 'send_message':
-        keyboard.append([InlineKeyboardButton('see all yours users', callback_data='all_my_users')])
-        keyboard.append([InlineKeyboardButton('see all who pressed \\start', callback_data='all_users')])
-        keyboard.append([InlineKeyboardButton('back', callback_data='start')])
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                              message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
-    if choice == 'all_my_users':
-        for i in data.keys():
-            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
-        keyboard.append([InlineKeyboardButton('back', callback_data='send_message')])
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="choose a user")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
-    for i in data.keys():
-        if choice == i:
-            pass
-            temp_user = i
-            context.bot.send_message(text=f'u picked @{i}',
-                                     chat_id=query.message.chat_id,
-                                     parse_mode=ParseMode.MARKDOWN)
-            return
-            # print(update.effective_message)
-            # # context.bot.send_message(text=f'{query.message.text}',
-            # #                          chat_id='5331730101',
-            # #                          parse_mode=ParseMode.MARKDOWN
-            # #                          )
-    
-    if choice == 'all_users':
-        for i in users:
-            keyboard.append([InlineKeyboardButton(users[i], callback_data=i)])
-        keyboard.append([InlineKeyboardButton('back', callback_data='send_message')])
-        context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="choose a user")
-        context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                              reply_markup=InlineKeyboardMarkup(keyboard))
+def forth_que(update: Update, context: CallbackContext):
+    if update.message.text is not None:
+        context.user_data['location'] = update.message.text
+    else:
+        lat = context.user_data['location_lat'] = update.message.location.latitude
+        lon = context.user_data['location_long'] = update.message.location.longitude
+        telegram.ReplyKeyboardRemove(True)
 
 
+# --------------------------------------------------------------------
+def watsup(update: Update, context):
+    user = update.effective_message.from_user.username
+    reply_markup = [[InlineKeyboardButton('I want to assemble my bento for tomorrow', callback_data='see_categories')],
+                    [InlineKeyboardButton('see whole bento menu', callback_data='see_whole')]]
+    update.effective_message.reply_text(text=f"hey,{user}, what's up?", reply_markup=InlineKeyboardMarkup(reply_markup))
+    return HI
+
+
+def buttons(update: Update, contex: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    if query.data == 'see_categories':
+        print('YOU DID IT')
+
+
+# --------------------------------------------------------------------
 def error(update, context):
     print("-" * 10, 'ERROR', '-' * 10)
     print(f"\nupdate {update} \ncaused error {context.error}\n")
     print("-" * 10, 'ERROR', '-' * 10)
 
 
-def menu(update, context):
-    buttons = [[KeyboardButton("/repeat")],
-               [KeyboardButton("/contact")],
-               [KeyboardButton("/help")],
-               ]
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='when you will be ready we can tap any button',
-                             reply_markup=ReplyKeyboardMarkup(buttons))
-
-
-def help_command(update, context):
-    buttons = [[KeyboardButton("/start")],
-               [KeyboardButton("/contact")]]
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text='if you need help write me in inst or wherever\n'
-                                  'also you can start over or get my contacts',
-                             reply_markup=ReplyKeyboardMarkup(buttons))
-
-
-def contact(update, context):
-    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
-                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
-    reply_markup_start = InlineKeyboardMarkup(contact_button)
-    update.message.reply_text("here:", reply_markup=reply_markup_start)
-
-
-def stop_user(update, context):
+def cancel(update: Update, context: CallbackContext):
+    update.message.reply_text(
+        'Name Conversation cancelled by user. Bye. Send /set_name to start again')
     return ConversationHandler.END
 
 
 def main():
-    updater = Updater(TOKEN, use_context=True)
+    updater = Updater(TELEGRAM_TOKEN, use_context=True)
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler('start', start_command))
-    dp.add_handler(CommandHandler('help', help_command))
-    dp.add_handler(CommandHandler('contact', contact))
-    dp.add_handler(CommandHandler('admin', admin_panel))
-    
-    dp.add_handler(CallbackQueryHandler(generate_buttons))
-    dp.add_handler(MessageHandler(Filters.text, user_check))
-    
     dp.add_error_handler(error)
-
+    
+    conv_handler_new_user = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            # new user:
+            WELCOME: [CallbackQueryHandler(first_que)],
+            YES: [CallbackQueryHandler(yalla)],
+            YALLA: [MessageHandler(Filters.text, second_que)],
+            EMAIL: [MessageHandler(Filters.text, third_que)],
+            LOCATION: [MessageHandler(Filters.text | Filters.location, forth_que)],
+            
+            # existing user:
+            HI: [CallbackQueryHandler(buttons)],
+        },
+        fallbacks=[CommandHandler('stop', cancel)]
+    )
+    
+    dp.add_handler(conv_handler_new_user)
     updater.start_polling()
     updater.idle()
 
