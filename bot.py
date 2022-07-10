@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE = range(7)
-COOK, SHOPPING = range(7, 9)
+COOK, SHOPPING = range(8, 10)
 
 HI = range(4, 5)
 
@@ -37,6 +37,7 @@ def wanna_buy(update: Update, context):
     return WELCOME
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> check first question and moving to second one
 def first_que(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
@@ -61,6 +62,7 @@ def first_que(update: Update, context: CallbackContext):
     return YES
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def yalla(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
@@ -73,6 +75,7 @@ def yalla(update: Update, context: CallbackContext):
     return YALLA
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> getting name and ask about email
 def second_que(update: Update, context: CallbackContext):
     context.user_data['name'] = update.message.text
     if update.message.text:
@@ -81,6 +84,7 @@ def second_que(update: Update, context: CallbackContext):
         return EMAIL
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> checking email and goes to location
 def third_que(update: Update, context: CallbackContext):
     pattern = '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
               '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
@@ -90,7 +94,7 @@ def third_que(update: Update, context: CallbackContext):
         loc = [[KeyboardButton('send location', request_location=True, )]]
         context.bot.send_message(text='ok!\ncountry and city you currently reside?(u may use button location)',
                                  chat_id=update.effective_chat.id,
-                                 reply_markup=ReplyKeyboardMarkup(loc, one_time_keyboard=True))
+                                 reply_markup=ReplyKeyboardMarkup(loc))
         
         return LOCATION
     else:
@@ -99,13 +103,17 @@ def third_que(update: Update, context: CallbackContext):
         return EMAIL
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> checks location and moving forward
 def forth_que(update: Update, context: CallbackContext):
-    print(1)
     if update.message.text:
-        print(2)
+        print(1)
         context.user_data['location'] = update.message.text
+        update.message.reply_text('do you have allergies or products you don’t like (and even hate)?\n'
+                                  'write it down in a single message',
+                                  reply_markup=None)
         return LIKE
-    else:
+    elif update.message.location:
+        print(2)
         lat = context.user_data['location_lat'] = update.message.location.latitude
         lon = context.user_data['location_long'] = update.message.location.longitude
         geo_coder = OpenCageGeocode(API_GEO)
@@ -123,6 +131,7 @@ def forth_que(update: Update, context: CallbackContext):
         return LOC_CHECK
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> if user sent loc we're checking if it's right and asks about hates
 def loc_check(update: Update, context: CallbackContext):
     print(3)
     query = update.callback_query
@@ -140,17 +149,19 @@ def loc_check(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
         return LOCATION
-    return LIKE
 
 
+# >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def fifth_que(update: Update, context: CallbackContext):
     print(4)
+    print(context.user_data)
+    print(update.effective_chat.id)
     context.user_data['allegies'] = update.message.text
-    context.bot.send_message('do you love to cook?',
-                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
-                                                                [InlineKeyboardButton('n', callback_data='n')]]),
-                             chat_id=update.effective_chat.id)
-    return COOK
+    if update.message.text:
+        update.message.reply_text('do you love to cook?',
+                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
+                                                                     [InlineKeyboardButton('n', callback_data='n')]]))
+        return COOK
 
 
 def eighth_que(update: Update, context: CallbackContext):
@@ -213,7 +224,7 @@ def main():
             YES: [CallbackQueryHandler(yalla)],
             YALLA: [MessageHandler(Filters.text, second_que)],
             EMAIL: [MessageHandler(Filters.text, third_que)],
-            LOCATION: [MessageHandler(Filters.text, forth_que)],
+            LOCATION: [MessageHandler(Filters.text | Filters.location, forth_que)],
             LOC_CHECK: [CallbackQueryHandler(loc_check)],
             LIKE: [MessageHandler(Filters.text, fifth_que)],
             COOK: [CallbackQueryHandler(eighth_que)],
@@ -222,7 +233,7 @@ def main():
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
         },
-        fallbacks=[CommandHandler('stop', cancel)]
+        fallbacks=[CommandHandler('stop', cancel)],
     )
     
     dp.add_handler(conv_handler_new_user)
