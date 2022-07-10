@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE = range(7)
-COOK, SHOPPING = range(8, 10)
+COOK, WOULD_LOVE, SHOPPING = range(7, 10)
 
 HI = range(4, 5)
 
@@ -151,10 +151,9 @@ def loc_check(update: Update, context: CallbackContext):
         return LOCATION
 
 
-# >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
+# >>>>>>>>>>>>>>>>>>>>>>>
 def fifth_que(update: Update, context: CallbackContext):
     print(4)
-    print(context.user_data)
     print(update.effective_chat.id)
     context.user_data['allegies'] = update.message.text
     if update.message.text:
@@ -164,22 +163,47 @@ def fifth_que(update: Update, context: CallbackContext):
         return COOK
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>
 def eighth_que(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     if query.data == 'y':
+        context.user_data['cook'] = 'YES'
         return SHOPPING
     elif query.data == 'n':
+        context.user_data['cook'] = 'nope'
         context.bot.edit_message_text('would you like to start loving it?😉',
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
                                                                          [InlineKeyboardButton('n', callback_data='n')]]
                                                                         ),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+        return WOULD_LOVE
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>
+def would_you(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'y':
+        context.user_data['cook_study'] = 'I would like'
+        return SHOPPING
+    elif update.callback_query.data == 'n':
+        context.user_data['cook_study'] = 'never'
+        context.bot.edit_message_text('sad :(',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return SHOPPING
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>
 def nineth_que(update: Update, context: CallbackContext):
-    pass
+    context.bot.edit_message_text('do you enjoy food shopping?',
+                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep', callback_data='y')],
+                                                                     [InlineKeyboardButton('hate', callback_data='n')]]
+                                                                    ),
+                                  chat_id=update.effective_chat.id,
+                                  message_id=update.effective_message.message_id)
 
 
 # --------------------------------------------------------------------
@@ -228,6 +252,7 @@ def main():
             LOC_CHECK: [CallbackQueryHandler(loc_check)],
             LIKE: [MessageHandler(Filters.text, fifth_que)],
             COOK: [CallbackQueryHandler(eighth_que)],
+            WOULD_LOVE: [CallbackQueryHandler(would_you)],
             SHOPPING: [CallbackQueryHandler(nineth_que)],
     
             # existing user:
