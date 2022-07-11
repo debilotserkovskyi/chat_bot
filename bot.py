@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
-WHERE, TOP, FAV, BUDGET, PAIN = range(10, 15)
+WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING = range(10, 17)
 
 HI = range(4, 5)
 
@@ -114,11 +114,11 @@ def forth_que(update: Update, context: CallbackContext):
         return LIKE
     elif update.message.location:
         print(2)
-        lat = context.user_data['location_lat'] = update.message.location.latitude
-        lon = context.user_data['location_long'] = update.message.location.longitude
+        lat = update.message.location.latitude
+        lon = update.message.location.longitude
         geo_coder = OpenCageGeocode(API_GEO)
         results = geo_coder.reverse_geocode(lat, lon)
-        
+    
         context.bot.send_message(text=f"so, you are in {results[0]['components']['country']}, "
                                       f"{results[0]['components']['state']}, {results[0]['components']['town']}, "
                                       f"right?",
@@ -153,7 +153,7 @@ def loc_check(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
-    context.user_data['allegies'] = update.message.text
+    context.user_data['allergies'] = update.message.text
     if update.message.text:
         update.message.reply_text('do you love to cook?',
                                   reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
@@ -186,7 +186,7 @@ def eighth_que(update: Update, context: CallbackContext):
         return WOULD_LOVE
 
 
-# >>>>>>>>>>>>>>>>>>>>>>> if user dont like to cook and asks about shoping
+# >>>>>>>>>>>>>>>>>>>>>>> if user dont like to cook and asks about shopping
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
@@ -213,14 +213,14 @@ def nineth_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     
     if update.callback_query.data == 'y':
-        context.user_data['shoping'] = 'I do'
+        context.user_data['shopping'] = 'I do'
         context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
         return WHERE
     elif update.callback_query.data == 'n':
-        context.user_data['shoping'] = "I don't"
+        context.user_data['shopping'] = "I don't"
     
     context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
                                   reply_markup=None,
@@ -248,7 +248,6 @@ def tenth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about fav and goes to budget
 def eleventh_que(update: Update, context: CallbackContext):
     context.user_data['fav'] = update.message.text
-    print(context.user_data)
     update.message.reply_text(text="budget. how much money you spend or want to spend for food per one week?")
     return BUDGET
 
@@ -256,7 +255,7 @@ def eleventh_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
 def twelfth_que(update: Update, context: CallbackContext):
     context.user_data['budget'] = update.message.text
-    solve = [[InlineKeyboardButton('no, i just want to diversify my daily menu', callback_data='no_just')],
+    pains = [[InlineKeyboardButton('no, i just want to diversify my daily menu', callback_data='no_just')],
              [InlineKeyboardButton('i changed my diet/became vegan  🌱 and need to find a menu '
                                    'solution for catching all the nutrients', callback_data='changed_diet')],
              [InlineKeyboardButton("i have a strong problem with not having a good lunch in"
@@ -266,12 +265,64 @@ def twelfth_que(update: Update, context: CallbackContext):
              [InlineKeyboardButton("another pain", callback_data='another')]
              ]
     update.message.reply_text(text="if there’s any pain about food you want to solve?",
-                              reply_markup=InlineKeyboardMarkup(solve))
+                              reply_markup=InlineKeyboardMarkup(pains))
     return PAIN
 
 
-# >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def pain(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'no_just':
+        context.user_data['pain'] = "no, i just want to diversify my daily menu"
+    elif update.callback_query.data == 'changed_diet':
+        context.user_data['pain'] = "i changed my diet/became vegan  🌱 and need to find a menu solution " \
+                                    "for catching all the nutrients"
+    elif update.callback_query.data == 'problem':
+        context.user_data['pain'] = "i have a strong problem with not having a good lunch in the middle of working day"
+    elif update.callback_query.data == 'time':
+        context.user_data['pain'] = "i don’t like/have time for cooking"
+    elif update.callback_query.data == 'less_money':
+        context.user_data['pain'] = "i want to spent less money on my food"
+    elif update.callback_query.data == 'another pain':
+        context.bot.edit_message_text(text='write it below then',
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return ANOTHER_PAIN
+    context.bot.edit_message_text(text='cool! now check your answers plz',
+                                  chat_id=update.effective_chat.id,
+                                  message_id=update.effective_message.message_id,
+                                  reply_markup=None)
+    txt = ''
+    for i in context.user_data.keys():
+        txt += i + ": " + context.user_data[i]
+    context.bot.send_message(txt,
+                             reply_markup=InlineKeyboardMarkup([
+                                 [InlineKeyboardButton('alright', callback_data='alright'),
+                                  InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
+                             chat_id=update.effective_chat.id)
+    return CHECKING
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
+def another_pain(update: Update, context: CallbackContext):
+    context.user_data['pain'] = update.message.text
+    context.bot.send_message(text='cool! now check your answers plz',
+                             chat_id=update.effective_chat.id,
+                             reply_markup=None)
+    txt = ''
+    for i in context.user_data.keys():
+        txt += i + ": " + context.user_data[i]
+    context.bot.send_message(txt,
+                             reply_markup=InlineKeyboardMarkup([
+                                 [InlineKeyboardButton('alright', callback_data='alright'),
+                                  InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
+                             chat_id=update.effective_chat.id)
+    return CHECKING
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
+def last_que(update: Update, context: CallbackContext):
     pass
 
 
@@ -328,6 +379,8 @@ def main():
             FAV: [MessageHandler(Filters.text, eleventh_que)],
             BUDGET: [MessageHandler(Filters.text, twelfth_que)],
             PAIN: [CallbackQueryHandler(pain)],
+            ANOTHER_PAIN: [MessageHandler(Filters.text, another_pain)],
+            CHECKING: [CallbackQueryHandler(last_que)],
     
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
