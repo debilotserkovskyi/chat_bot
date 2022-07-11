@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
-WHERE, TOP, FAV, BUDGET = range(10, 14)
+WHERE, TOP, FAV, BUDGET, PAIN = range(10, 15)
 
 HI = range(4, 5)
 
@@ -249,7 +249,30 @@ def tenth_que(update: Update, context: CallbackContext):
 def eleventh_que(update: Update, context: CallbackContext):
     context.user_data['fav'] = update.message.text
     print(context.user_data)
-    return cancel(update, context)
+    update.message.reply_text(text="budget. how much money you spend or want to spend for food per one week?")
+    return BUDGET
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
+def twelfth_que(update: Update, context: CallbackContext):
+    context.user_data['budget'] = update.message.text
+    solve = [[InlineKeyboardButton('no, i just want to diversify my daily menu', callback_data='no_just')],
+             [InlineKeyboardButton('i changed my diet/became vegan  🌱 and need to find a menu '
+                                   'solution for catching all the nutrients', callback_data='changed_diet')],
+             [InlineKeyboardButton("i have a strong problem with not having a good lunch in"
+                                   "the middle of working day", callback_data='problem')],
+             [InlineKeyboardButton("i don’t like/have time for cooking", callback_data='time')],
+             [InlineKeyboardButton("i want to spent less money on my food", callback_data="less_money")],
+             [InlineKeyboardButton("another pain", callback_data='another')]
+             ]
+    update.message.reply_text(text="if there’s any pain about food you want to solve?",
+                              reply_markup=InlineKeyboardMarkup(solve))
+    return PAIN
+
+
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
+def pain(update: Update, context: CallbackContext):
+    pass
 
 
 # --------------------------------------------------------------------
@@ -303,6 +326,8 @@ def main():
             WHERE: [MessageHandler(Filters.text, where_shop)],
             TOP: [MessageHandler(Filters.text, tenth_que)],
             FAV: [MessageHandler(Filters.text, eleventh_que)],
+            BUDGET: [MessageHandler(Filters.text, twelfth_que)],
+            PAIN: [CallbackQueryHandler(pain)],
     
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
