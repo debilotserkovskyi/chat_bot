@@ -20,7 +20,7 @@ WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPIN
 WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE = range(10, 18)
 
 HI = range(4, 5)
-global id_to_delete
+global must_delete
 
 
 def start(update: Update, context):
@@ -30,6 +30,10 @@ def start(update: Update, context):
         return wanna_buy(update, context)
     else:
         return watsup(update, context)
+
+
+def delete_messagies(context, id_m, id_ch):
+    context.bot.deleteMessage(chat_id=id_ch, message_id=id_m)
 
 
 # --------------------------------------------------------------------
@@ -68,94 +72,102 @@ def first_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def yalla(update: Update, context: CallbackContext):
+    global must_delete
     query = update.callback_query
     query.answer()
     if query.data == 'yalla':
-        context.bot.edit_message_text(text='first, let me get to know you:) what’s your name and surname?'
-                                           '\n(type everything in one message)',
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=None)
+        must_delete = context.bot.edit_message_text(text='first, let me get to know you:) what’s your name and surname?'
+                                                         '\n(type everything in one message)',
+                                                    chat_id=update.effective_chat.id,
+                                                    message_id=update.effective_message.message_id,
+                                                    reply_markup=None)
+    
     return YALLA
 
 
+# must_delete = update.message.reply_text("Please delete")
+# context.bot.deleteMessage (message_id = must_delete.message_id,
+#                            chat_id = update.message.chat_id)
+
 # >>>>>>>>>>>>>>>>>>>>>>> getting name and ask about email
 def second_que(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['name'] = update.message.text
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if update.message.text:
-        context.bot.send_message(text='e-mail?',
-                                 chat_id=update.effective_chat.id)
-        id_to_delete = update.effective_message.message_id
+        must_delete = context.bot.send_message(text='e-mail?',
+                                               chat_id=update.effective_chat.id)
         return EMAIL
-
-
-def delete_messagies(context, id_m, id_ch):
-    global id_to_delete
-    context.bot.deleteMessage(chat_id=id_ch, message_id=id_m)
-    context.bot.deleteMessage(chat_id=id_ch, message_id=id_to_delete)
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> checking email and goes to location
 def third_que(update: Update, context: CallbackContext):
+    global must_delete
     pattern = '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
               '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
     
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if match(pattern, update.message.text):
         context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
-        context.bot.send_message(text='ok!\ncountry and city you currently reside?(u may use button location)',
-                                 chat_id=update.effective_chat.id,
-                                 reply_markup=ReplyKeyboardMarkup(loc))
+        
+        must_delete = context.bot.send_message(
+            text='ok!\ncountry and city you currently reside?(u may use button location)',
+            chat_id=update.effective_chat.id,
+            reply_markup=ReplyKeyboardMarkup(loc))
         return LOCATION
     else:
-        context.bot.send_message(text="i can't understand this email, try again plz",
-                                 chat_id=update.effective_chat.id)
+        must_delete = context.bot.send_message(text="i can't understand this email, try again plz",
+                                               chat_id=update.effective_chat.id)
         return EMAIL
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> checks location and moving forward
 def forth_que(update: Update, context: CallbackContext):
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id)
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id - 1)
+    global must_delete
     if update.message.text:
-        print(1)
+    
         context.user_data['location'] = update.message.text
-        update.message.reply_text('do you have allergies or products you don’t like (and even hate)?\n'
-                                  'write it down in a single message',
-                                  reply_markup=None)
+        delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    
+        must_delete = update.message.reply_text('do you have allergies or products you don’t like (and even hate)?\n'
+                                                'write it down in a single message',
+                                                reply_markup=None)
         return LIKE
     elif update.message.location:
-        print(2)
         lat = update.message.location.latitude
         lon = update.message.location.longitude
         geo_coder = OpenCageGeocode(API_GEO)
         results = geo_coder.reverse_geocode(lat, lon)
+        delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
         print(results)
-        
-        context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, "
-                                      f"right?",
-                                 chat_id=update.effective_chat.id,
-                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
-                                                                    [InlineKeyboardButton('n', callback_data='n')]]))
+        must_delete = context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, "
+                                                    f"right?",
+                                               chat_id=update.effective_chat.id,
+                                               reply_markup=InlineKeyboardMarkup(
+                                                   [[InlineKeyboardButton('y', callback_data='y')],
+                                                    [InlineKeyboardButton('n', callback_data='n')]]))
         context.user_data['location'] = results[0]['formatted']
-        # context.user_data['state'] = results[0]['components']['state']
-        # context.user_data['town'] = results[0]['components']['town']
         return LOC_CHECK
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> if user sent loc we're checking if it's right and asks about hates
 def loc_check(update: Update, context: CallbackContext):
+    global must_delete
     print(3)
     query = update.callback_query
     query.answer()
     if query.data == 'y':
-        context.bot.edit_message_text('do you have allergies or products you don’t like (and even hate)?\n'
-                                      'write it down in a single message',
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=None)
+        must_delete = context.bot.edit_message_text(
+            'do you have allergies or products you don’t like (and even hate)?\n'
+            'write it down in a single message',
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id,
+            reply_markup=None)
         return LIKE
     elif query.data == 'n':
         context.bot.edit_message_text('then maybe try to write it manually?',
@@ -167,11 +179,14 @@ def loc_check(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['allergies'] = update.message.text
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if update.message.text:
         update.message.reply_text('do you love to cook?',
-                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
-                                                                     [InlineKeyboardButton('n', callback_data='n')]]))
+                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
+                                                                      InlineKeyboardButton('n', callback_data='n')]]))
         return COOK
 
 
@@ -183,8 +198,8 @@ def eighth_que(update: Update, context: CallbackContext):
         context.user_data['cook'] = 'YES'
         context.bot.edit_message_text('do you enjoy food shopping?',
                                       reply_markup=InlineKeyboardMarkup(
-                                          [[InlineKeyboardButton('yep', callback_data='y')],
-                                           [InlineKeyboardButton('hate', callback_data='n')]]
+                                          [[InlineKeyboardButton('yep', callback_data='y'),
+                                            InlineKeyboardButton('hate', callback_data='n')]]
                                       ),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
@@ -192,8 +207,10 @@ def eighth_que(update: Update, context: CallbackContext):
     elif query.data == 'n':
         context.user_data['cook'] = 'nope'
         context.bot.edit_message_text('would you like to start loving it?😉',
-                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y')],
-                                                                         [InlineKeyboardButton('n', callback_data='n')]]
+                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
+                                                                                               callback_data='y'),
+                                                                          InlineKeyboardButton('nope',
+                                                                                               callback_data='n')]]
                                                                         ),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
@@ -204,18 +221,21 @@ def eighth_que(update: Update, context: CallbackContext):
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
-        context.user_data['cook_study'] = 'I would like'
+        context.user_data['wanna learn?'] = 'I would like'
     elif update.callback_query.data == 'n':
-        context.user_data['cook_study'] = 'never'
+        context.user_data['wanna learn?'] = 'never'
         context.bot.edit_message_text('sad :(',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+        context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
+                                     timeout=1)
+        time.sleep(2)
     
     context.bot.edit_message_text('do you enjoy food shopping?',
                                   reply_markup=InlineKeyboardMarkup(
-                                      [[InlineKeyboardButton('yep', callback_data='y')],
-                                       [InlineKeyboardButton('hate', callback_data='n')]]
+                                      [[InlineKeyboardButton('yep', callback_data='y'),
+                                        InlineKeyboardButton('hate', callback_data='n')]]
                                   ),
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id)
@@ -223,68 +243,66 @@ def would_you(update: Update, context: CallbackContext):
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks goes to top-4
-def nineth_que(update: Update, context: CallbackContext):
+def ninth_que(update: Update, context: CallbackContext):
+    global must_delete
     update.callback_query.answer()
     
     if update.callback_query.data == 'y':
         context.user_data['shopping'] = 'I do'
-        context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
-                                      reply_markup=None,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id)
+        must_delete = context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
+                                                    reply_markup=None,
+                                                    chat_id=update.effective_chat.id,
+                                                    message_id=update.effective_message.message_id)
         return WHERE
     elif update.callback_query.data == 'n':
         context.user_data['shopping'] = "I don't"
     
-    context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
-                                  reply_markup=None,
-                                  chat_id=update.effective_chat.id,
-                                  message_id=update.effective_message.message_id)
+    must_delete = context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
+                                                reply_markup=None,
+                                                chat_id=update.effective_chat.id,
+                                                message_id=update.effective_message.message_id)
     return TOP
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> if he likes asks where user buys and goes to top-4
 def where_shop(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['where'] = update.message.text
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id)
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id - 1)
-    update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
-                              reply_markup=None)
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    must_delete = update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
+                                            reply_markup=None)
     return TOP
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
 def tenth_que(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['top-4'] = update.message.text
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id)
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id - 1)
-    update.message.reply_text(text='do you have your favorite/traditional meals? '
-                                   '(ex. if you’re eating same kind of breakfast everyday)')
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    must_delete = update.message.reply_text(text='do you have your favorite/traditional meals? '
+                                                 '(ex. if you’re eating same kind of breakfast everyday)')
     return FAV
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about fav and goes to budget
 def eleventh_que(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['fav'] = update.message.text
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id)
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id - 1)
-    update.message.reply_text(text="budget. how much money you spend or want to spend for food per one week?")
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    must_delete = update.message.reply_text(
+        text="budget. how much money you spend or want to spend for food per one week?")
     return BUDGET
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
 def twelfth_que(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['budget'] = update.message.text
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id)
-    # context.bot.deleteMessage(chat_id=update.effective_message.chat_id,
-    #                           message_id=update.effective_message.message_id - 1)
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     pains = [[InlineKeyboardButton('no, i just want to diversify my daily menu', callback_data='no_just')],
              [InlineKeyboardButton('i changed my diet/became vegan  🌱 and need to find a menu '
                                    'solution for catching all the nutrients', callback_data='changed_diet')],
@@ -301,6 +319,7 @@ def twelfth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def pain(update: Update, context: CallbackContext):
+    global must_delete
     update.callback_query.answer()
     if update.callback_query.data == 'no_just':
         context.user_data['pain'] = "no, i just want to diversify my daily menu"
@@ -314,10 +333,10 @@ def pain(update: Update, context: CallbackContext):
     elif update.callback_query.data == 'less_money':
         context.user_data['pain'] = "i want to spent less money on my food"
     elif update.callback_query.data == 'another':
-        context.bot.edit_message_text(text='write it below then',
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=None)
+        must_delete = context.bot.edit_message_text(text='write it below then',
+                                                    chat_id=update.effective_chat.id,
+                                                    message_id=update.effective_message.message_id,
+                                                    reply_markup=None)
         return ANOTHER_PAIN
     context.bot.edit_message_text(text='cool! now check your answers plz',
                                   chat_id=update.effective_chat.id,
@@ -328,8 +347,10 @@ def pain(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def another_pain(update: Update, context: CallbackContext):
+    global must_delete
     context.user_data['pain'] = update.message.text
-    delete_messagies(context, update.effective_message.message_id, update.effective_chat.id)
+    delete_messagies(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     context.bot.send_message(text='cool! now check your answers plz',
                              chat_id=update.effective_chat.id,
                              reply_markup=None)
@@ -456,7 +477,7 @@ def main():
             LIKE: [MessageHandler(Filters.text, fifth_que)],
             COOK: [CallbackQueryHandler(eighth_que)],
             WOULD_LOVE: [CallbackQueryHandler(would_you)],
-            SHOPPING: [CallbackQueryHandler(nineth_que)],
+            SHOPPING: [CallbackQueryHandler(ninth_que)],
             WHERE: [MessageHandler(Filters.text, where_shop)],
             TOP: [MessageHandler(Filters.text, tenth_que)],
             FAV: [MessageHandler(Filters.text, eleventh_que)],
