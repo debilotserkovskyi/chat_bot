@@ -309,19 +309,23 @@ def eleventh_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
 def twelfth_que(update: Update, context: CallbackContext):
-    global must_delete
+    global must_delete, pains_dict
     context.user_data['budget'] = update.message.text
     delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
     context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
-    pains = [[InlineKeyboardButton('no, i just want to diversify my daily menu', callback_data='no_just')],
-             [InlineKeyboardButton('i changed my diet/became vegan  🌱 and need to find a menu '
-                                   'solution for catching all the nutrients', callback_data='changed_diet')],
-             [InlineKeyboardButton("i have a strong problem with not having a good lunch in"
-                                   "the middle of working day", callback_data='problem')],
-             [InlineKeyboardButton("i don’t like/have time for cooking", callback_data='time')],
-             [InlineKeyboardButton("i want to spent less money on my food", callback_data="less_money")],
-             [InlineKeyboardButton("another pain", callback_data='another')]
-             ]
+    pains_dict = {'no_just': 'no, i just want to diversify my daily menu',
+                  'changed_diet': 'i changed my diet/became vegan 🌱 and need to find a menu solution for catching '
+                                  'all the nutrients',
+                  'problem': 'i have a strong problem with not having a good lunch in the middle of working day',
+                  'time': 'i don’t like/have time for cooking',
+                  'less_money': 'i want to spent less money on my food',
+                  'another': 'another pain',
+                  }
+    pains = []
+    for i in pains_dict.keys():
+        pains.append([InlineKeyboardButton(pains_dict[i], callback_data=i)])
+    pains.append([InlineKeyboardButton("send all these pains as msg", callback_data='msg')])
+
     update.message.reply_text(text="if there’s any pain about food you want to solve?",
                               reply_markup=InlineKeyboardMarkup(pains))
     return PAIN
@@ -329,7 +333,7 @@ def twelfth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def pain(update: Update, context: CallbackContext):
-    global must_delete
+    global must_delete, pains_dict
     update.callback_query.answer()
     if update.callback_query.data == 'no_just':
         context.user_data['pain'] = "no, i just want to diversify my daily menu"
@@ -348,6 +352,19 @@ def pain(update: Update, context: CallbackContext):
                                                     message_id=update.effective_message.message_id,
                                                     reply_markup=None)
         return ANOTHER_PAIN
+    elif update.callback_query.data == 'msg':
+        txt = ''
+        keyboard = []
+        for i, j in enumerate(pains_dict):
+            txt += str(i + 1) + ': ' + pains_dict[j] + '\n\n'
+            keyboard.append([InlineKeyboardButton(str(i + 1), callback_data=j)])
+    
+        context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard),
+                                      )
+        return PAIN
+    
     context.bot.edit_message_text(text='cool! now check your answers plz',
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
@@ -355,7 +372,7 @@ def pain(update: Update, context: CallbackContext):
     return checking(update, context)
 
 
-# >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
+# >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain and goes to next step
 def another_pain(update: Update, context: CallbackContext):
     global must_delete
     context.user_data['pain'] = update.message.text
@@ -364,14 +381,15 @@ def another_pain(update: Update, context: CallbackContext):
     context.bot.send_message(text='cool! now check your answers plz',
                              chat_id=update.effective_chat.id,
                              reply_markup=None)
-    return checking(update, context)
+    
+    return CHECKING
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def checking(update, context):
     txt = ''
     for i in context.user_data.keys():
-        txt += "*" + i + "*" + ": " + context.user_data[i] + ';\n'
+        txt += "*" + i + "*" + ": " + context.user_data[i] + ';\n\n'
     context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
                                  timeout=1)
     time.sleep(1)
@@ -496,9 +514,8 @@ def categories(update: Update, context: CallbackContext):
     username = update.effective_user.username
     for i in data[username]:
         if choice in i['category']:
-            keyboard_new = i['name']
             s += 1
-            keyboard.append([InlineKeyboardButton(keyboard_new, callback_data=i['callback'])])
+            keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
     if len(keyboard) == s:
         keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
 
@@ -516,7 +533,15 @@ def send_dish(update: Update, context: CallbackContext):
     choice = update.callback_query.data
     # context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if choice == 'back_to_categories':
-        return watsup(update, context)
+        return
+    elif choice == 'back':
+        reply_markup = [
+            [InlineKeyboardButton('I want to assemble my bento for tomorrow', callback_data='see_categories')],
+            [InlineKeyboardButton('see whole bento menu', callback_data='see_whole')]]
+        context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(reply_markup))
+        return HI
     for i in data[username]:
         if choice in i['callback']:
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
