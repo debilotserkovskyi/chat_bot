@@ -27,6 +27,12 @@ def start(update: Update, context):
     user = update.effective_message.from_user.username
     print(user)
     delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
+    menu = [[KeyboardButton("/start")],
+            [KeyboardButton("/stop")],
+            [KeyboardButton("/help")], ]
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text='if bot stopped reply correctly press stop then start',
+                             reply_markup=ReplyKeyboardMarkup(menu))
     if user not in data.keys():
         return wanna_buy(update, context)
     else:
@@ -365,7 +371,7 @@ def another_pain(update: Update, context: CallbackContext):
 def checking(update, context):
     txt = ''
     for i in context.user_data.keys():
-        txt += i + ": " + context.user_data[i] + ';\n'
+        txt += "*" + i + "*" + ": " + context.user_data[i] + ';\n'
     context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
                                  timeout=1)
     time.sleep(1)
@@ -375,7 +381,8 @@ def checking(update, context):
                                       [InlineKeyboardButton('alright', callback_data='alright'),
                                        InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
                                   chat_id=update.callback_query.message.chat_id,
-                                  message_id=update.effective_message.message_id)
+                                  message_id=update.effective_message.message_id,
+                                  parse_mode=ParseMode.MARKDOWN)
     
     context.bot.forward_message(message_id=update.callback_query.message.message_id,
                                 chat_id=133495703,
@@ -436,7 +443,7 @@ def change_que(update: Update, context: CallbackContext):
 
 # --------------------------------------------------------------------
 def watsup(update: Update, context: CallbackContext):
-    user = update.effective_message.from_user.username
+    user = update.message.from_user.username
     reply_markup = [[InlineKeyboardButton('I want to assemble my bento for tomorrow', callback_data='see_categories')],
                     [InlineKeyboardButton('see whole bento menu', callback_data='see_whole')]]
     update.effective_message.reply_text(text=f"hey, {user}, what's up?",
@@ -451,7 +458,6 @@ def buttons(update: Update, context: CallbackContext):
     username = update.effective_user.username
     keyboard = []
     cat_list = []
-    dishes_to_dict = {}
     used = set()
     
     if query.data == 'see_categories':
@@ -476,13 +482,8 @@ def buttons(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
         must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                                     text="here is your whole menu", reply_markup=reply_markup)
-    
-        return DISH
 
-    # for i in data[username]:
-    #     dishes_to_dict[i['category']] = []
-    # for i in data[username]:
-    #     dishes_to_dict[i['category']].append(i['name'])
+        return DISH
 
 
 def categories(update: Update, context: CallbackContext):
@@ -491,14 +492,20 @@ def categories(update: Update, context: CallbackContext):
     query.answer()
     choice = query.data
     keyboard = []
+    s = 0
     username = update.effective_user.username
     for i in data[username]:
         if choice in i['category']:
             keyboard_new = i['name']
+            s += 1
             keyboard.append([InlineKeyboardButton(keyboard_new, callback_data=i['callback'])])
-            context.bot.edit_message_reply_markup(chat_id=query.message.chat_id,
-                                                  message_id=query.message.message_id,
-                                                  reply_markup=InlineKeyboardMarkup(keyboard))
+    if len(keyboard) == s:
+        keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
+
+    must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id,
+                                                message_id=query.message.message_id,
+                                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                                text=f'here is recipes w/ {choice}')
     return DISH
 
 
@@ -507,7 +514,9 @@ def send_dish(update: Update, context: CallbackContext):
     update.callback_query.answer()
     query = update.callback_query
     choice = update.callback_query.data
-    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    # context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
+    if choice == 'back_to_categories':
+        return watsup(update, context)
     for i in data[username]:
         if choice in i['callback']:
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
