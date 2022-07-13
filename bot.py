@@ -25,6 +25,8 @@ global must_delete
 
 def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
+    context.user_data['username'] = "@" + user
+    print(context.user_data['username'])
     delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
     menu = [[KeyboardButton("/start")],
             [KeyboardButton("/stop")],
@@ -186,7 +188,7 @@ def loc_check(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
     global must_delete
-    context.user_data['allergies'] = update.message.text
+    context.user_data["allergies or products I don't like"] = update.message.text
 
     delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
     context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
@@ -408,8 +410,7 @@ def checking(update: Update, context: CallbackContext, edit):
         [InlineKeyboardButton('alright', callback_data='alright'),
          InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
                                   chat_id=edit.chat_id,
-                                  message_id=edit.message_id,
-                                  parse_mode=ParseMode.MARKDOWN)
+                                  message_id=edit.message_id, )
     
     return CHECKING
 
@@ -446,9 +447,11 @@ def change_que(update: Update, context: CallbackContext):
     global edit
     update.callback_query.answer()
     context.user_data['changed'] = []
-    query_data = ['name', 'email', 'location', 'allergies', 'shopping', 'top-4', 'fav', 'budget', 'pain']
-    
+    query_data = ['name', 'email', 'location', "allergies or products I don't like", 'cooking',
+                  'shopping', 'top-4', 'fav', 'budget', 'pain']
+    print(context.user_data.keys())
     for i in query_data:
+        print(i, '---', update.callback_query.data)
         if update.callback_query.data == i:
             context.user_data['changed'].append(i)
             edit = context.bot.edit_message_text(f'write your new {i}',
