@@ -109,11 +109,12 @@ def second_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> checking email and goes to location
 def third_que(update: Update, context: CallbackContext):
     print(update.effective_message.message_id, context.user_data)
-    
-    pattern = '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
-              '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
-    
-    if match(pattern, update.message.text):
+
+    context.chat_data['pattern'] = \
+        '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
+        '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
+
+    if match(context.chat_data['pattern'], update.message.text):
         context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
     
@@ -130,10 +131,9 @@ def third_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> checks location and moving forward
 def forth_que(update: Update, context: CallbackContext):
     print(update.effective_message.message_id, context.user_data)
-    
     if update.message.text:
         context.user_data['location'] = update.message.text
-    
+
         update.message.reply_text('do you have allergies or products you don’t like (and even hate)?\n'
                                   'write it down in a single message',
                                   reply_markup=None)
@@ -141,7 +141,7 @@ def forth_que(update: Update, context: CallbackContext):
     elif update.message.location:
         geo_coder = OpenCageGeocode(API_GEO)
         results = geo_coder.reverse_geocode(update.message.location.latitude, update.message.location.longitude)
-    
+
         print(results)
         context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, "
                                       f"right?",
@@ -179,12 +179,12 @@ def fifth_que(update: Update, context: CallbackContext):
     print(update.effective_message.message_id, context.user_data)
     
     context.user_data["allergies or products I don't like"] = update.message.text
-    
-    
+
     if update.message.text:
-        update.message.reply_text('do you love to cook?',
-                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
-                                                                      InlineKeyboardButton('n', callback_data='n')]]))
+        context.chat_data['cooking'] = update.message.reply_text(
+            'do you love to cook?',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
+                                                InlineKeyboardButton('n', callback_data='n')]]))
         return COOK
 
 
@@ -192,6 +192,8 @@ def fifth_que(update: Update, context: CallbackContext):
 def eighth_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     print(context.user_data)
+    print()
+    print(context.chat_data['cooking'])
     
     if update.callback_query.data == 'y':
         context.user_data['cooking'] = 'YES'
@@ -218,7 +220,6 @@ def eighth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> if user dont like to cook and asks about shopping
 def would_you(update: Update, context: CallbackContext):
-    
     update.callback_query.answer()
     if update.callback_query.data == 'y':
         context.user_data['wanna learn?'] = 'I would like'
@@ -443,7 +444,7 @@ def change_que(update: Update, context: CallbackContext):
     return CHANGING_NAME
 
 
-def changing_name(update: Update, context: CallbackContext):
+def changing_answer(update: Update, context: CallbackContext):
     context.bot.deleteMessage(message_id=update.effective_message.message_id, chat_id=update.effective_chat.id)
     for i in context.user_data.keys():
         if i in context.chat_data['wanna_change']:
@@ -489,6 +490,7 @@ def buttons(update: Update, context: CallbackContext):
     elif query.data == 'see_whole':
         for i in data[username]:
             keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
+        keyboard.append([InlineKeyboardButton('see whole menu ass message', callback_data='txt')])
         keyboard.append([InlineKeyboardButton('random', callback_data='random')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -551,6 +553,23 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
+
+    if choice == 'txt':
+        txt = ''
+        buttons_ = [[]]
+        k, s = 0, 0
+        for i, j in enumerate(data[username]):
+            s += 1
+            if s % 7 == 0:
+                buttons_.append([])
+                k += 1
+            txt += str(i + 1) + ': ' + j['name'] + '\n\n'
+            buttons_[k].append(InlineKeyboardButton(str(i + 1), callback_data=j['callback']))
+    
+        context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
+        return DISH
     return cancel(update, context)
 
 
@@ -588,7 +607,7 @@ def main():
             ANOTHER_PAIN: [MessageHandler(Filters.text, another_pain)],
             CHECKING: [CallbackQueryHandler(last_que)],
             CHANGE: [CallbackQueryHandler(change_que)],
-            CHANGING_NAME: [MessageHandler(Filters.text, changing_name)],
+            CHANGING_NAME: [MessageHandler(Filters.text, changing_answer)],
     
             # existing user:
             HI: [CallbackQueryHandler(buttons)],
