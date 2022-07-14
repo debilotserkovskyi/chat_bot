@@ -469,9 +469,8 @@ def buttons(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     username = update.effective_user.username
-    keyboard = []
-    cat_list = []
-    used = set()
+    keyboard, cat_list, used = [], [], set()
+    context.chat_data['category'], context.chat_data['callback'] = [], []
     
     if query.data == 'see_categories':
         for i in range(len(data[username])):
@@ -480,6 +479,8 @@ def buttons(update: Update, context: CallbackContext):
             for category in unique_categories:
                 keyboard.append([InlineKeyboardButton(str(category),
                                                       callback_data=data[username][i]['category'])])
+                context.chat_data['category'].append(category)
+                context.chat_data['callback'].append(data[username][i]['category'])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
@@ -509,6 +510,14 @@ def categories(update: Update, context: CallbackContext):
     context.chat_data['category_dishes'], context.chat_data['category_callback'] = [], []
     s = 0
     username = update.effective_user.username
+    if choice == 'back':
+        reply_markup = [
+            [InlineKeyboardButton('I want to assemble my bento for tomorrow', callback_data='see_categories')],
+            [InlineKeyboardButton('see whole bento menu', callback_data='see_whole')]]
+        context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(reply_markup))
+        return HI
     for i in data[username]:
         if choice in i['category']:
             s += 1
@@ -518,7 +527,7 @@ def categories(update: Update, context: CallbackContext):
     if len(keyboard) == s:
         keyboard.append([InlineKeyboardButton('see these dishes in message', callback_data='txt_cat')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
-
+    
     must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id,
                                                 message_id=query.message.message_id,
                                                 reply_markup=InlineKeyboardMarkup(keyboard),
@@ -532,11 +541,20 @@ def send_dish(update: Update, context: CallbackContext):
     query = update.callback_query
     choice = update.callback_query.data
     txt = ''  # when user want to see whole list of dishes
-    buttons_ = [[]]
+    buttons_, keyboard = [[]], []
     k, s = 0, 0  # indicators for buttons
-    # context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if choice == 'back_to_categories':
-        return
+        for i, j in enumerate(context.chat_data['category']):
+            keyboard.append([InlineKeyboardButton(j, callback_data=context.chat_data['callback'][i])])
+        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
+        context.bot.edit_message_text(
+            text='all categories is below:',
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+        return CATEGORY
     elif choice == 'back':
         reply_markup = [
             [InlineKeyboardButton('I want to assemble my bento for tomorrow', callback_data='see_categories')],
@@ -569,7 +587,8 @@ def send_dish(update: Update, context: CallbackContext):
                 k += 1
             txt += str(i + 1) + ': ' + j['name'] + '\n\n'
             buttons_[k].append(InlineKeyboardButton(str(i + 1), callback_data=j['callback']))
-
+        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
+    
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
@@ -629,7 +648,7 @@ def main():
             CATEGORY: [CallbackQueryHandler(categories)],
             DISH: [CallbackQueryHandler(send_dish)],
         },
-        fallbacks=[CommandHandler('stop', cancel)],
+        fallbacks=[CommandHandler('start', start)],
         run_async=True,
         per_user=True
     )
