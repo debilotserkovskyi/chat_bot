@@ -117,7 +117,7 @@ def third_que(update: Update, context: CallbackContext):
     if match(context.chat_data['pattern'], update.message.text):
         context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
-    
+
         context.bot.send_message(
             text='ok!\ncountry and city you currently reside?(u may use button location)',
             chat_id=update.effective_chat.id,
@@ -506,13 +506,17 @@ def categories(update: Update, context: CallbackContext):
     query.answer()
     choice = query.data
     keyboard = []
+    context.chat_data['category_dishes'], context.chat_data['category_callback'] = [], []
     s = 0
     username = update.effective_user.username
     for i in data[username]:
         if choice in i['category']:
             s += 1
             keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
+            context.chat_data['category_dishes'].append(i['name'])
+            context.chat_data['category_callback'].append(i['callback'])
     if len(keyboard) == s:
+        keyboard.append([InlineKeyboardButton('see these dishes in message', callback_data='txt_cat')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
 
     must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id,
@@ -527,6 +531,9 @@ def send_dish(update: Update, context: CallbackContext):
     update.callback_query.answer()
     query = update.callback_query
     choice = update.callback_query.data
+    txt = ''  # when user want to see whole list of dishes
+    buttons_ = [[]]
+    k, s = 0, 0  # indicators for buttons
     # context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     if choice == 'back_to_categories':
         return
@@ -553,11 +560,8 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-
+    
     if choice == 'txt':
-        txt = ''
-        buttons_ = [[]]
-        k, s = 0, 0
         for i, j in enumerate(data[username]):
             s += 1
             if s % 7 == 0:
@@ -565,11 +569,22 @@ def send_dish(update: Update, context: CallbackContext):
                 k += 1
             txt += str(i + 1) + ': ' + j['name'] + '\n\n'
             buttons_[k].append(InlineKeyboardButton(str(i + 1), callback_data=j['callback']))
-    
+
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
         return DISH
+    elif choice == 'txt_cat':
+        for i, j in enumerate(context.chat_data['category_dishes']):
+            txt += str(i + 1) + ': ' + j + '\n\n'
+            buttons_[k].append(
+                InlineKeyboardButton(str(i + 1), callback_data=context.chat_data['category_callback'][i]))
+        
+        context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
+        return DISH
+    
     return cancel(update, context)
 
 
