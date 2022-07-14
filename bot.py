@@ -203,7 +203,6 @@ def fifth_que(update: Update, context: CallbackContext):
     context.user_data["allergies or products I don't like"] = update.message.text
     
     delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
-    context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=must_delete.chat_id)
     
     if update.message.text:
         update.message.reply_text('do you love to cook?',
@@ -648,6 +647,8 @@ def main():
             DISH: [CallbackQueryHandler(send_dish)],
         },
         fallbacks=[CommandHandler('stop', cancel)],
+        run_async=True,
+        per_user=True
     )
     
     dp.add_handler(conv_handler_new_user)
