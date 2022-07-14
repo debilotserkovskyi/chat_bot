@@ -194,7 +194,7 @@ def eighth_que(update: Update, context: CallbackContext):
     print(context.user_data)
     
     if update.callback_query.data == 'y':
-        context.user_data['cook'] = 'YES'
+        context.user_data['cooking'] = 'YES'
         context.bot.edit_message_text('do you enjoy food shopping?',
                                       reply_markup=InlineKeyboardMarkup(
                                           [[InlineKeyboardButton('yep', callback_data='y'),
@@ -204,7 +204,7 @@ def eighth_que(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id)
         return SHOPPING
     elif update.callback_query.data == 'n':
-        context.user_data['cook'] = 'nope'
+        context.user_data['cooking'] = 'nope'
         context.bot.edit_message_text('would you like to start loving it?😉',
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
                                                                                                callback_data='y'),
@@ -326,6 +326,7 @@ def twelfth_que(update: Update, context: CallbackContext):
 def pain(update: Update, context: CallbackContext):
     global must_delete, pains_dict, edit
     print(context.user_data)
+    context.user_data['changed'] = []
     
     update.callback_query.answer()
     if update.callback_query.data == 'no_just':
@@ -368,7 +369,6 @@ def pain(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain and goes to next step
 def another_pain(update: Update, context: CallbackContext):
-    global must_delete
     print(context.user_data)
     
     context.user_data['pain'] = update.message.text
@@ -396,14 +396,13 @@ def checking(update: Update, context: CallbackContext, edit):
          InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
                                   chat_id=edit.chat_id,
                                   message_id=edit.message_id, )
-    
+
     return CHECKING
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> IS EVERYTHING FINE????
 def last_que(update: Update, context: CallbackContext):
     print(context.user_data)
-    
     update.callback_query.answer()
     if update.callback_query.data == 'alright':
         context.user_data['in a process'] = False
@@ -416,12 +415,10 @@ def last_que(update: Update, context: CallbackContext):
                                       chat_id=update.effective_chat.id)
         return cancel(update, context)
     elif update.callback_query.data == 'you_better_no':
-        context.user_data['changed'] = True
-        changes_list = ['name', 'email', 'location', "allergies or products I don't like", 'cooking', 'shopping',
-                        'top-4 list', 'fav/traditional meals', 'budget', 'pain']
         change = []
-        for i in changes_list:
-            change.append([InlineKeyboardButton(i, callback_data=i)])
+        for i in context.user_data.keys():
+            if i not in ['username', 'in a process', 'changed']:
+                change.append([InlineKeyboardButton(i, callback_data=i)])
         context.bot.edit_message_text('pick what do you want to choose:',
                                       reply_markup=InlineKeyboardMarkup(change),
                                       chat_id=update.effective_chat.id,
@@ -435,24 +432,21 @@ def change_que(update: Update, context: CallbackContext):
     print(context.user_data)
     
     update.callback_query.answer()
-    context.user_data['changed'] = []
-    query_data = ['name', 'email', 'location', "allergies or products I don't like", 'cooking',
-                  'shopping', 'top-4', 'fav', 'budget', 'pain']
-    for i in query_data:
+    for i in context.user_data.keys():
         if update.callback_query.data == i:
             context.user_data['changed'].append(i)
             edit = context.bot.edit_message_text(f'write your new {i}',
                                                  reply_markup=None,
                                                  chat_id=update.effective_chat.id,
                                                  message_id=update.effective_message.message_id)
-    
+            context.chat_data['wanna_change'] = i
     return CHANGING_NAME
 
 
 def changing_name(update: Update, context: CallbackContext):
-    query_data = ['name', 'email', 'location', 'allergies', 'shopping', 'top-4', 'fav', 'budget', 'pain']
-    for i in query_data:
-        if i in context.user_data['changed']:
+    context.bot.deleteMessage(message_id=update.effective_message.message_id, chat_id=update.effective_chat.id)
+    for i in context.user_data.keys():
+        if i in context.chat_data['wanna_change']:
             context.user_data[i] = update.message.text
     
     return checking(update, context, edit)
