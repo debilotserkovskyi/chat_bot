@@ -644,6 +644,7 @@ def admin_2(update: Update, context: CallbackContext):
         admin_buttons = []
         for i in users.keys():
             admin_buttons.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
+        admin_buttons.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
         context.bot.edit_message_text(
             text='choose user who u want to send message:\n'
                  '!note that u can send message only to user who pressed start',
@@ -657,21 +658,30 @@ def admin_2(update: Update, context: CallbackContext):
 def send_message(update: Update, context: CallbackContext):
     global users
     update.callback_query.answer()
+    context.chat_data['admin send message: users_id'], context.chat_data['admin send message: user_name'] = [], []
+    text = ''
     for i in users.keys():
         if update.callback_query.data == i:
-            context.chat_data['admin send message: user_id'] = update.callback_query.data
-            context.chat_data['admin send message: user_name'] = update.callback_query.data
-            context.bot.edit_message_text(f'ok, what message do you want to send to @{users[i]}?',
-                                          message_id=update.effective_message.message_id,
-                                          chat_id=update.effective_chat.id,
-                                          reply_markup=None)
-            return SEND_MESSAGE_TXT
+            context.chat_data['admin send message: users_id'].append(update.callback_query.data)
+            context.chat_data['admin send message: user_name'].append(users[i])
+            text = f'ok, what message do you want to send to @{users[i]}?'
+        
+        elif update.callback_query.data == 'send to all':
+            context.chat_data['admin send message: users_id'].append(i)
+            context.chat_data['admin send message: user_name'].append(users[i])
+            text = f'ok, what message do you want to send to all users?'
+    
+    context.bot.edit_message_text(text=text,
+                                  message_id=update.effective_message.message_id,
+                                  chat_id=update.effective_chat.id,
+                                  reply_markup=None)
+    return SEND_MESSAGE_TXT
 
 
 def second_que_txt(update: Update, context: CallbackContext):
     message = context.user_data['admin send message: message'] = update.message.text
     update.message.reply_text(
-        text=f"so, message:\n\n{message}\n\nto user: @{context.chat_data['admin send message: user_name']}",
+        text=f"so, message:\n\n{message}\n\nto user(s): @{context.chat_data['admin send message: user_name']}",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
                                             InlineKeyboardButton('change', callback_data='change')]]))
     return SENDING
@@ -680,11 +690,12 @@ def second_que_txt(update: Update, context: CallbackContext):
 def sending(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'send':
-        context.bot.send_message(
-            text=context.user_data['admin send message: message'],
-            chat_id=context.chat_data['admin send message: user_id']
-        )
-        
+        for i in context.chat_data['admin send message: users_id']:
+            context.bot.send_message(
+                text=context.user_data['admin send message: message'],
+                chat_id=i
+            )
+    
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
