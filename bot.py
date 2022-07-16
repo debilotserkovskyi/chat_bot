@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from ast import literal_eval
 from re import match
 
 import telegram
@@ -21,11 +22,28 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 
 HI, CATEGORY, DISH = range(20, 23)
 
+ADMIN = range(30, 31)
+
+with open('users.txt', 'r') as f:
+    all_ = f.read()
+    if len(all_) == 0:
+        users = {}
+    else:
+        users = literal_eval(all_)
+
 
 def start(update: Update, context: CallbackContext):
+    global users
     print(context.user_data)
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
+    id_ = update.message.from_user
+    if id_ not in users.keys():
+        users[str(id_)] = user
+        
+        # get users in dict and save them in txt
+        with open('users.txt', 'w') as s:
+            s.write(str(users))
     # delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
     # menu = [[KeyboardButton("/start")],
     #         [KeyboardButton("/stop")],
@@ -36,6 +54,8 @@ def start(update: Update, context: CallbackContext):
     print(update.effective_message.message_id, update.effective_chat.id)
     if user not in data.keys():
         return wanna_buy(update, context)
+    elif user == 'deadpimp':
+        return admin(update, context)
     else:
         return wats_up(update, context)
 
@@ -565,6 +585,8 @@ def send_dish(update: Update, context: CallbackContext):
         return HI
     for i in data[username]:
         if choice in i['callback']:
+            context.bot.deleteMessage(message_id=update.effective_message.message_id,
+                                      chat_id=update.effective_chat.id)
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
@@ -598,13 +620,30 @@ def send_dish(update: Update, context: CallbackContext):
             txt += str(i + 1) + ': ' + j + '\n\n'
             buttons_[k].append(
                 InlineKeyboardButton(str(i + 1), callback_data=context.chat_data['category_callback'][i]))
-        
+
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
         return DISH
-    
+
     return cancel(update, context)
+
+
+# --------------------------------------------------------------------
+def admin(update: Update, context: CallbackContext):
+    admins_button = [[InlineKeyboardButton('send message to a user/to all users', callback_data='send message')],
+                     [InlineKeyboardButton('see who starts queries', callback_data='who querying')],
+                     [InlineKeyboardButton('see who pressed /start', callback_data='start_pressed')]]
+    update.message.reply_text(f"hey, bossss, let's go!", reply_markup=InlineKeyboardMarkup(admins_button))
+    return ADMIN
+
+
+def admin_2(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'send message':
+        context.bot.edit_message_text(
+            text='choose user who u want to send message:\n(note that u can send message only to user who pressed start'
+        )
 
 
 # --------------------------------------------------------------------
@@ -647,6 +686,9 @@ def main():
             HI: [CallbackQueryHandler(buttons)],
             CATEGORY: [CallbackQueryHandler(categories)],
             DISH: [CallbackQueryHandler(send_dish)],
+    
+            # admin panel:
+            ADMIN: [CallbackQueryHandler(admin_2)]
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
