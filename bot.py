@@ -22,7 +22,7 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 
 HI, CATEGORY, DISH = range(20, 23)
 
-ADMIN = range(30, 31)
+ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING = range(30, 34)
 
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -37,7 +37,7 @@ def start(update: Update, context: CallbackContext):
     print(context.user_data)
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
-    id_ = update.message.from_user
+    id_ = update.message.from_user.id
     if id_ not in users.keys():
         users[str(id_)] = user
         
@@ -641,9 +641,54 @@ def admin(update: Update, context: CallbackContext):
 def admin_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'send message':
+        admin_buttons = []
+        for i in users.keys():
+            admin_buttons.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
         context.bot.edit_message_text(
-            text='choose user who u want to send message:\n(note that u can send message only to user who pressed start'
+            text='choose user who u want to send message:\n'
+                 '!note that u can send message only to user who pressed start',
+            message_id=update.effective_message.message_id,
+            chat_id=update.effective_chat.id,
+            reply_markup=InlineKeyboardMarkup(admin_buttons)
         )
+        return SEND_MESSAGE
+
+
+def send_message(update: Update, context: CallbackContext):
+    global users
+    update.callback_query.answer()
+    for i in users.keys():
+        if update.callback_query.data == i:
+            context.chat_data['admin send message: user_id'] = update.callback_query.data
+            context.chat_data['admin send message: user_name'] = update.callback_query.data
+            context.bot.edit_message_text(f'ok, what message do you want to send to @{users[i]}?',
+                                          message_id=update.effective_message.message_id,
+                                          chat_id=update.effective_chat.id,
+                                          reply_markup=None)
+            return SEND_MESSAGE_TXT
+
+
+def second_que_txt(update: Update, context: CallbackContext):
+    message = context.user_data['admin send message: message'] = update.message.text
+    update.message.reply_text(
+        text=f"so, message:\n\n{message}\n\nto user: @{context.chat_data['admin send message: user_name']}",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
+                                            InlineKeyboardButton('change', callback_data='change')]]))
+    return SENDING
+
+
+def sending(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'send':
+        context.bot.send_message(
+            text=context.user_data['admin send message: message'],
+            chat_id=context.chat_data['admin send message: user_id']
+        )
+        
+        context.bot.edit_message_text('done!',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
 
 
 # --------------------------------------------------------------------
@@ -688,7 +733,10 @@ def main():
             DISH: [CallbackQueryHandler(send_dish)],
     
             # admin panel:
-            ADMIN: [CallbackQueryHandler(admin_2)]
+            ADMIN: [CallbackQueryHandler(admin_2)],
+            SEND_MESSAGE: [CallbackQueryHandler(send_message)],
+            SEND_MESSAGE_TXT: [MessageHandler(Filters.text, second_que_txt)],
+            SENDING: [CallbackQueryHandler(sending)],
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
