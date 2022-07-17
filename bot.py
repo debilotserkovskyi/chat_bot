@@ -33,14 +33,12 @@ with open('users.txt', 'r') as f:
     else:
         users = literal_eval(all_)
 
-# with open('users_data.txt', 'r') as df:
-#     read = df.read()
-#     if len(read) != 0:
-#         save = literal_eval(read)
-#     else:
-#         save = {}
-
-save = {}
+with open('users_data.txt', 'r') as df:
+    read = df.read()
+    if len(read) != 0:
+        save = literal_eval(read)
+    else:
+        save = {}
 
 
 def start(update: Update, context: CallbackContext):
@@ -63,7 +61,7 @@ def start(update: Update, context: CallbackContext):
             with open('users_data.txt', 'w') as f:
                 save[user] = str(context.user_data)
                 f.write(str(save))
-
+    
         saving()
         return wanna_buy(update, context)
     elif user == 'deadpimp':
@@ -142,7 +140,7 @@ def third_que(update: Update, context: CallbackContext):
     if match(context.chat_data['pattern'], update.message.text):
         context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
-    
+
         context.bot.send_message(
             text='ok!\ncountry and city you currently reside?(u may use button location)',
             chat_id=update.effective_chat.id,
@@ -397,7 +395,7 @@ def checking(update: Update, context: CallbackContext, edit):
         if i == 'in a process' or 'changed':
             continue
         else:
-            txt += "*" + i + "*" + ": " + str(context.user_data[i]) + ';\n\n'
+            txt += i + ": " + str(context.user_data[i]) + ';\n\n'
     context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
                                  timeout=1)
     time.sleep(1)
@@ -629,7 +627,7 @@ def admin(update: Update, context: CallbackContext):
                                          'v hrib yoho shche ne zvelo.']
     context.bot_data['admin_buttons'] = {'send message': 'send message to a user/to all users',
                                          'answers': 'see users answers for query',
-                                         'who querying': 'see who starts queries',
+                                         # 'who querying': 'see who starts queries',
                                          'start_pressed': 'see who pressed /start'}
     admins_button = []
     for i in context.bot_data['admin_buttons'].keys():
@@ -666,13 +664,13 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
         return cancel(update, context)
-
     elif update.callback_query.data == 'answers':
         with open('users_data.txt', 'r') as df:
             context.bot_data['data'] = literal_eval(df.read())
         keyboard = []
         for i in context.bot_data['data']:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text("pick who's data u wanna see:",
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
@@ -682,12 +680,21 @@ def admin_2(update: Update, context: CallbackContext):
 
 def user_data(update: Update, context: CallbackContext):
     update.callback_query.answer()
+    if update.callback_query.data == 'back':
+        admins_button = []
+        for i in context.bot_data['admin_buttons'].keys():
+            admins_button.append([InlineKeyboardButton(context.bot_data['admin_buttons'][i], callback_data=i)])
+        context.bot.edit_message_text(
+            text=random.choice(context.bot_data['admin_phrases']),
+            reply_markup=InlineKeyboardMarkup(admins_button),
+            chat_id=update.effective_chat.id, message_id=update.effective_message.message_id)
+        return ADMIN
+    
     for i in context.bot_data['data']:
         if update.callback_query.data == i:
             txt = ''
             pars = literal_eval(context.bot_data['data'][i])
             for j in pars:
-                print(j)
                 txt += j + ': ' + str(pars[j]) + '\n\n'
             context.bot.edit_message_text(txt,
                                           message_id=update.effective_message.message_id,
