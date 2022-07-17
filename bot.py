@@ -24,7 +24,7 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 
 HI, CATEGORY, DISH = range(20, 23)
 
-ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING = range(30, 34)
+ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA = range(30, 35)
 
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -33,38 +33,37 @@ with open('users.txt', 'r') as f:
     else:
         users = literal_eval(all_)
 
+# with open('users_data.txt', 'r') as df:
+#     read = df.read()
+#     if len(read) != 0:
+#         save = literal_eval(read)
+#     else:
+#         save = {}
+
+save = {}
+
 
 def start(update: Update, context: CallbackContext):
     global users
-    print(context.user_data)
-    context.bot_data['admin to user'] = {}
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
+    
     if id_ not in users.keys():
         users[str(id_)] = user
         
         # get users in dict and save them in txt
         with open('users.txt', 'w') as s:
             s.write(str(users))
-    # delete_messages(context, id_ch=update.effective_chat.id, id_m=update.effective_message.message_id)
-    # menu = [[KeyboardButton("/start")],
-    #         [KeyboardButton("/stop")],
-    #         [KeyboardButton("/help")], ]
-    # context.bot.send_message(chat_id=update.effective_chat.id,
-    #                          text='if bot stopped reply correctly press stop then start',
-    #                          reply_markup=ReplyKeyboardMarkup(menu))
+    
     if user not in data.keys():
-        context.bot_data['admin to user']['user'] = user
-        context.bot_data['admin to user']['user id'] = id_
     
         def saving():
-            save = {}
-            threading.Timer(60.0, saving).start()
-            save[context.bot_data['admin to user']['user']] = str(context.bot_data['admin to user'])
+            threading.Timer(15.0, saving).start()
             with open('users_data.txt', 'w') as f:
+                save[user] = str(context.user_data)
                 f.write(str(save))
-    
+
         saving()
         return wanna_buy(update, context)
     elif user == 'deadpimp':
@@ -74,7 +73,6 @@ def start(update: Update, context: CallbackContext):
 
 
 def cancel(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
     # update.message.reply_text(
     #     'Name Conversation cancelled by user. Bye. Send /set_name to start again')
     return ConversationHandler.END
@@ -91,11 +89,9 @@ def wanna_buy(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> check first question and moving to second one
 def first_que(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
     query = update.callback_query
     query.answer()
     if query.data == 'YES':
-        context.bot_data['admin to user']['pressed YES'] = True
         context.bot.edit_message_text(
             text='oh yeah! so get ready for a food questionnaire to create your menu the most '
                  'suitable to your FOOD LIFESTYLE, your tastes and the current season.',
@@ -104,7 +100,6 @@ def first_que(update: Update, context: CallbackContext):
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yalla', callback_data='yalla')]]))
     
     if query.data == 'contact':
-        context.bot_data['admin to user']['pressed contacts'] = True
         contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
                           [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
         reply_markup_start = InlineKeyboardMarkup(contact_button)
@@ -118,11 +113,9 @@ def first_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def yalla(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
-
     update.callback_query.answer()
     if update.callback_query.data == 'yalla':
-        context.bot_data['admin to user']['in a process'] = context.user_data['in a process'] = True
+        context.user_data['in a process'] = True
         context.bot.edit_message_text(
             text='first, let me get to know you:) what’s your name and surname?\n(type everything in one message)',
             chat_id=update.effective_chat.id,
@@ -134,8 +127,7 @@ def yalla(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> getting name and ask about email
 def second_que(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
-    context.bot_data['admin to user']["self-name"] = context.user_data['name'] = update.message.text
+    context.user_data['name'] = update.message.text
     if update.message.text:
         context.bot.send_message(text='e-mail?', chat_id=update.effective_chat.id)
         return EMAIL
@@ -143,14 +135,12 @@ def second_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> checking email and goes to location
 def third_que(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
-
     context.chat_data['pattern'] = \
         '^(?:(?!.*?[.]{2})[a-zA-Z0-9](?:[a-zA-Z0-9.+!%-]{1,64}|)|\"[a-zA-Z0-9.+!% -]{1,64}\")@[a-zA-Z0-9]' \
         '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
 
     if match(context.chat_data['pattern'], update.message.text):
-        context.bot_data['admin to user']['email'] = context.user_data['email'] = update.message.text
+        context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
     
         context.bot.send_message(
@@ -165,10 +155,9 @@ def third_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> checks location and moving forward
 def forth_que(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
     if update.message.text:
-        context.bot_data['admin to user']['location'] = context.user_data['location'] = update.message.text
-    
+        context.user_data['location'] = update.message.text
+        
         update.message.reply_text('do you have allergies or products you don’t like (and even hate)?\n'
                                   'write it down in a single message',
                                   reply_markup=None)
@@ -184,13 +173,12 @@ def forth_que(update: Update, context: CallbackContext):
                                  reply_markup=InlineKeyboardMarkup(
                                      [[InlineKeyboardButton('y', callback_data='y')],
                                       [InlineKeyboardButton('n', callback_data='n')]]))
-        context.bot_data['admin to user']['location'] = context.user_data['location'] = results[0]['formatted']
+        context.user_data['location'] = results[0]['formatted']
         return LOC_CHECK
 
 
 # >>>>>>>>>>>>>>>>>>>>>>> if user sent loc we're checking if it's right and asks about hates
 def loc_check(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
     update.callback_query.answer()
 
     if update.callback_query.data == 'y':
@@ -211,11 +199,7 @@ def loc_check(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
-    print(update.effective_message.message_id, context.user_data)
-    
-    context.bot_data['admin to user']['allergies'] = \
-        context.user_data["allergies or products I don't like"] = update.message.text
-    
+    context.user_data["allergies or products I don't like"] = update.message.text
     if update.message.text:
         update.message.reply_text(
             'do you love to cook?',
@@ -227,12 +211,9 @@ def fifth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks about shopping
 def eighth_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    print(context.user_data)
-    print()
-    print(context.chat_data['cooking'])
     
     if update.callback_query.data == 'y':
-        context.bot_data['admin to user']['cooking'] = context.user_data['cooking'] = 'YES'
+        context.user_data['cooking'] = 'YES'
         context.bot.edit_message_text('do you enjoy food shopping?',
                                       reply_markup=InlineKeyboardMarkup(
                                           [[InlineKeyboardButton('yep', callback_data='y'),
@@ -242,7 +223,7 @@ def eighth_que(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id)
         return SHOPPING
     elif update.callback_query.data == 'n':
-        context.bot_data['admin to user']['cooking'] = context.user_data['cooking'] = 'no'
+        context.user_data['cooking'] = 'no'
         context.bot.edit_message_text('would you like to start loving it?😉',
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
                                                                                                callback_data='y'),
@@ -258,9 +239,9 @@ def eighth_que(update: Update, context: CallbackContext):
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
-        context.bot_data['admin to user']['wanna learn?'] = context.user_data['wanna learn?'] = 'I would like'
+        context.user_data['wanna learn?'] = 'I would like'
     elif update.callback_query.data == 'n':
-        context.bot_data['admin to user']['wanna learn?'] = context.user_data['wanna learn?'] = 'never'
+        context.user_data['wanna learn?'] = 'never'
         context.bot.edit_message_text('sad :(',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
@@ -286,14 +267,14 @@ def ninth_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
 
     if update.callback_query.data == 'y':
-        context.bot_data['admin to user']['food shopping'] = context.user_data['shopping'] = 'I do'
+        context.user_data['shopping'] = 'I do'
         context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
         return WHERE
     elif update.callback_query.data == 'n':
-        context.bot_data['admin to user']['food shopping'] = context.user_data['shopping'] = "I don't"
+        context.user_data['shopping'] = "I don't"
 
     context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
                                   reply_markup=None,
@@ -304,9 +285,7 @@ def ninth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> if he likes asks where user buys and goes to top-4
 def where_shop(update: Update, context: CallbackContext):
-    print(context.user_data)
-
-    context.bot_data['admin to user']['where does shopping'] = context.user_data['where'] = update.message.text
+    context.user_data['where'] = update.message.text
     
     update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
                               reply_markup=None)
@@ -315,9 +294,7 @@ def where_shop(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
 def tenth_que(update: Update, context: CallbackContext):
-    print(context.user_data)
-
-    context.bot_data['admin to user']['top-4'] = context.user_data['top-4'] = update.message.text
+    context.user_data['top-4'] = update.message.text
     update.message.reply_text(text='do you have your favorite/traditional meals? '
                                    '(ex. if you’re eating same kind of breakfast everyday)')
     return FAV
@@ -325,9 +302,7 @@ def tenth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about fav and goes to budget
 def eleventh_que(update: Update, context: CallbackContext):
-    print(context.user_data)
-
-    context.bot_data['admin to user']['fav'] = context.user_data['fav'] = update.message.text
+    context.user_data['fav'] = update.message.text
     
     update.message.reply_text(
         text="budget. how much money you spend or want to spend for food per one week?")
@@ -337,9 +312,8 @@ def eleventh_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
 def twelfth_que(update: Update, context: CallbackContext):
     global must_delete, pains_dict
-    print(context.user_data)
-
-    context.bot_data['admin to user']['budget'] = context.user_data['budget'] = update.message.text
+    
+    context.user_data['budget'] = update.message.text
     
     pains_dict = {'no_just': 'no, i just want to diversify my daily menu',
                   'changed_diet': 'i changed my diet/became vegan 🌱 and need to find a menu solution for catching '
@@ -362,8 +336,7 @@ def twelfth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def pain(update: Update, context: CallbackContext):
     global must_delete, pains_dict, edit
-    print(context.user_data)
-    context.bot_data['admin to user']['changed'] = context.user_data['changed'] = []
+    context.user_data['changed'] = []
     
     update.callback_query.answer()
     if update.callback_query.data == 'no_just':
@@ -408,9 +381,7 @@ def pain(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain and goes to next step
 def another_pain(update: Update, context: CallbackContext):
-    print(context.user_data)
-
-    context.bot_data['admin to user']['pain'] = context.user_data['pain'] = update.message.text
+    context.user_data['pain'] = update.message.text
     
     edit = context.bot.send_message(text='cool! now check your answers plz',
                                     chat_id=update.effective_chat.id,
@@ -423,7 +394,7 @@ def another_pain(update: Update, context: CallbackContext):
 def checking(update: Update, context: CallbackContext, edit):
     txt = ''
     for i in context.user_data.keys():
-        if i == 'in a process':
+        if i == 'in a process' or 'changed':
             continue
         else:
             txt += "*" + i + "*" + ": " + str(context.user_data[i]) + ';\n\n'
@@ -441,10 +412,9 @@ def checking(update: Update, context: CallbackContext, edit):
 
 # >>>>>>>>>>>>>>>>>>>>>>> IS EVERYTHING FINE????
 def last_que(update: Update, context: CallbackContext):
-    print(context.user_data)
     update.callback_query.answer()
     if update.callback_query.data == 'alright':
-        context.bot_data['admin to user']['in a process'] = context.user_data['in a process'] = False
+        context.user_data['in a process'] = False
         context.bot.forward_message(message_id=update.effective_message.message_id,
                                     chat_id=133495703,
                                     from_chat_id=update.effective_chat.id)
@@ -468,12 +438,10 @@ def last_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> sends user to whatever he wants to change
 def change_que(update: Update, context: CallbackContext):
     global edit
-    print(context.user_data)
-    
     update.callback_query.answer()
     for i in context.user_data.keys():
         if update.callback_query.data == i:
-            context.bot_data['admin to user']['changed'] = context.user_data['changed'].append(i)
+            context.user_data['changed'].append(i)
             edit = context.bot.edit_message_text(f'write your new {i}',
                                                  reply_markup=None,
                                                  chat_id=update.effective_chat.id,
@@ -679,7 +647,7 @@ def admin_2(update: Update, context: CallbackContext):
             buttons_.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
         buttons_.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
         buttons_.append([InlineKeyboardButton(f'back', callback_data='back')])
-    
+
         context.bot.edit_message_text(
             text='choose user who u want to send message:\n'
                  '!note that u can send message only to user who pressed start',
@@ -700,9 +668,31 @@ def admin_2(update: Update, context: CallbackContext):
         return cancel(update, context)
 
     elif update.callback_query.data == 'answers':
-        print(context.bot_data)
-        for i in context.bot_data['admin to user']:
-            print(context.bot_data['admin to user'][i])
+        with open('users_data.txt', 'r') as df:
+            context.bot_data['data'] = literal_eval(df.read())
+        keyboard = []
+        for i in context.bot_data['data']:
+            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        context.bot.edit_message_text("pick who's data u wanna see:",
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+        return DATA
+
+
+def user_data(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    for i in context.bot_data['data']:
+        if update.callback_query.data == i:
+            txt = ''
+            pars = literal_eval(context.bot_data['data'][i])
+            for j in pars:
+                print(j)
+                txt += j + ': ' + str(pars[j]) + '\n\n'
+            context.bot.edit_message_text(txt,
+                                          message_id=update.effective_message.message_id,
+                                          chat_id=update.effective_chat.id,
+                                          reply_markup=None)
 
 
 def send_message(update: Update, context: CallbackContext):
@@ -755,7 +745,7 @@ def sending(update: Update, context: CallbackContext):
                 text=context.bot_data['admin send message: message'],
                 chat_id=i
             )
-    
+
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
@@ -808,6 +798,7 @@ def main():
             SEND_MESSAGE: [CallbackQueryHandler(send_message)],
             SEND_MESSAGE_TXT: [MessageHandler(Filters.text, second_que_txt)],
             SENDING: [CallbackQueryHandler(sending)],
+            DATA: [CallbackQueryHandler(user_data)]
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
