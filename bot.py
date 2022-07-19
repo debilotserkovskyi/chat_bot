@@ -24,7 +24,7 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 
 HI, CATEGORY, DISH = range(20, 23)
 
-ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED = range(30, 36)
+ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER = range(30, 38)
 
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -647,7 +647,7 @@ def admin(update: Update, context: CallbackContext):
                                          'v hrib yoho shche ne zvelo.']
     context.bot_data['admin_buttons'] = {'send message': 'send message to a user/to all users',
                                          'answers': 'see users answers for query',
-                                         # 'who querying': 'see who starts queries',
+                                         'data': 'change or add recipy data',
                                          'start_pressed': 'see who pressed /start',
                                          'picked': 'see which dishes are picked'}
     admins_button = []
@@ -660,27 +660,28 @@ def admin(update: Update, context: CallbackContext):
 
 def admin_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    buttons_ = []
+    keyboard = []
+    
     if update.callback_query.data == 'send message':
         for i in users.keys():
-            buttons_.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
-        buttons_.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
-        buttons_.append([InlineKeyboardButton(f'back', callback_data='back')])
+            keyboard.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
+        keyboard.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
+        keyboard.append([InlineKeyboardButton(f'back', callback_data='back')])
         
         context.bot.edit_message_text(
             text='choose user who u want to send message:\n'
                  '!note that u can send message only to user who pressed start',
             message_id=update.effective_message.message_id,
             chat_id=update.effective_chat.id,
-            reply_markup=InlineKeyboardMarkup(buttons_)
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return SEND_MESSAGE
     elif update.callback_query.data == 'picked':
         for i in context.chat_data['picked dish']:
-            buttons_.append([InlineKeyboardButton(f'{i}', callback_data=i)])
+            keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
         context.bot.edit_message_text('pick who:', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(buttons_))
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
         return PICKED
     elif update.callback_query.data == 'start_pressed':
         text = f'here is {len(users)} users: \n\n'
@@ -694,7 +695,6 @@ def admin_2(update: Update, context: CallbackContext):
     elif update.callback_query.data == 'answers':
         with open('users_data.txt', 'r') as df:
             context.bot_data['data'] = literal_eval(df.read())
-        keyboard = []
         for i in context.bot_data['data']:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
@@ -703,6 +703,31 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return DATA
+    
+    elif update.callback_query.data == 'data':
+        for i in data:
+            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        keyboard.append([InlineKeyboardButton('add new user', callback_data='new user')])
+        text = 'pick a user to change or add a new one'
+        context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+        return DATA_CHANGE
+
+
+def data_change(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    keyboard = []
+    text = ''
+    if update.callback_query.data == 'new user':
+        text = "type his username carefully! *Note, that u need to type it without @ symbol otherwise it won't work"
+        context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id, reply_markup=None)
+        return NEW_USER
+    
+    for j, i in enumerate(data):
+        if update.callback_query.data == i:
+            text += data[i][j]
 
 
 def picked_dishes(update: Update, context: CallbackContext):
@@ -861,7 +886,8 @@ def main():
                                               second_que_txt)],
             SENDING: [CallbackQueryHandler(sending)],
             DATA: [CallbackQueryHandler(user_data)],
-            PICKED: [CallbackQueryHandler(picked_dishes)]
+            PICKED: [CallbackQueryHandler(picked_dishes)],
+            DATA_CHANGE: [CallbackQueryHandler(data_change)],
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
