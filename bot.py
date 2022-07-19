@@ -24,7 +24,7 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 
 HI, CATEGORY, DISH = range(20, 23)
 
-ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER = range(30, 38)
+ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
 
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -717,17 +717,53 @@ def admin_2(update: Update, context: CallbackContext):
 
 def data_change(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    keyboard = []
-    text = ''
+    context.bot_data['recipy data'] = ['number', 'name', 'category', 'ingredients', 'recipy']
+    keyboard = [[]]
+    text = f'here is his/her/their ({update.callback_query.data}) menu:\n\n'
     if update.callback_query.data == 'new user':
-        text = "type his username carefully! *Note, that u need to type it without @ symbol otherwise it won't work"
+        text = "type his/her/their username carefully!\n" \
+               "*Note, that u need to type it without @ symbol otherwise it won't work*"
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id, reply_markup=None)
+                                      message_id=update.effective_message.message_id, reply_markup=None,
+                                      parse_mode=ParseMode.MARKDOWN)
         return NEW_USER
     
-    for j, i in enumerate(data):
+    for i in data:
         if update.callback_query.data == i:
-            text += data[i][j]
+            s, k = 0, 0
+            context.bot_data['picked user'] = i
+            
+            for n, j in enumerate(data[i]):
+                text += str(j['number']) + ': ' + str(j['name']) + '\n'
+                s += 1
+                if s % 7 == 0:
+                    keyboard.append([])
+                    k += 1
+                keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
+            text += '\npick what do u want to change here'
+            context.bot_data['text data'] = text
+            
+            context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                          message_id=update.effective_message.message_id,
+                                          reply_markup=InlineKeyboardMarkup(keyboard))
+            return DATA_CHANGE_2
+
+
+def data_change_2(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    text, keyboard = '', []
+    for i, j in enumerate(data[context.bot_data['picked user']]):
+        if update.callback_query.data == str(i + 1):
+            text += str(j['number']) + ': ' + str(j['name']) + '\n\n' + 'CATEGORY: ' + str(j['category']) + '\n\n'
+            # str(j['ingredients'][:150]) + '...\n\n' + '*RECIPY*: '+str(j['recipy'][:150]) + '...'
+    for k in context.bot_data['recipy data']:
+        if k == 'number':
+            continue
+        else:
+            keyboard.append([InlineKeyboardButton(k, callback_data=k)])
+    context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                  message_id=update.effective_message.message_id,
+                                  reply_markup=InlineKeyboardMarkup(keyboard), )
 
 
 def picked_dishes(update: Update, context: CallbackContext):
@@ -826,7 +862,7 @@ def sending(update: Update, context: CallbackContext):
                 text=context.bot_data['admin send message: message'],
                 chat_id=i
             )
-    
+
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
@@ -888,6 +924,7 @@ def main():
             DATA: [CallbackQueryHandler(user_data)],
             PICKED: [CallbackQueryHandler(picked_dishes)],
             DATA_CHANGE: [CallbackQueryHandler(data_change)],
+            DATA_CHANGE_2: [CallbackQueryHandler(data_change_2)]
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
