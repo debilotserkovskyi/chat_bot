@@ -35,17 +35,10 @@ with open('users.txt', 'r') as f:
 
 with open('users_data.txt', 'r') as df:
     read = df.read()
-    if len(read) != 0:
+    if len(read) == 0:
         save = literal_eval(read)
     else:
         save = {}
-
-with open('users_data_picked.txt', 'r') as df:
-    read = df.read()
-    if len(read) != 0:
-        picked = literal_eval(read)
-    else:
-        picked = {}
 
 
 def start(update: Update, context: CallbackContext):
@@ -53,11 +46,23 @@ def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
-    context.chat_data[user], context.chat_data[user]['picked dish'] = {}, picked
-    if len(picked) == 0:
-        for i in data[user]:
-            context.chat_data[user]['picked dish'][i['name']] = 0
+    
+    with open('users_data_picked.txt', 'r') as df:
+        read = df.read()
+        if len(read) == 0:
+            reed = {'picked dish': {}}
+        else:
+            reed = literal_eval(read)
+        if user in reed['picked dish']:
+            context.chat_data['picked dish'] = reed['picked dish']
+        else:
+            context.chat_data['picked dish'] = reed['picked dish']
+            context.chat_data['picked dish'][user] = {}
+            for i in data[user]:
+                context.chat_data['picked dish'][user][i['name']] = 0
+    
     print(context.chat_data)
+    
     if id_ not in users.keys():
         users[str(id_)] = user
         
@@ -72,7 +77,7 @@ def start(update: Update, context: CallbackContext):
             with open('users_data.txt', 'w') as f:
                 save[user] = str(context.user_data)
                 f.write(str(save))
-    
+
         saving()
         return wanna_buy(update, context)
     elif user == 'deadpimp':
@@ -580,7 +585,7 @@ def send_dish(update: Update, context: CallbackContext):
         return HI
     for i in data[username]:
         if choice in i['callback']:
-            context.chat_data[username]['picked dish'][i['name']] += 1
+            context.chat_data['picked dish'][username][i['name']] += 1
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id)
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
@@ -596,8 +601,9 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
+            print(context.chat_data)
             with open('users_data_picked.txt', 'w') as ud:
-                ud.write(str(context.chat_data[username]['picked dish']))
+                ud.write(str(context.chat_data))
 
     if choice == 'txt':
         for i, j in enumerate(data[username]):
@@ -670,7 +676,7 @@ def admin_2(update: Update, context: CallbackContext):
         )
         return SEND_MESSAGE
     elif update.callback_query.data == 'picked':
-        for i in context.chat_data:
+        for i in context.chat_data['picked dish']:
             buttons_.append([InlineKeyboardButton(f'{i}', callback_data=i)])
         context.bot.edit_message_text('pick who:', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
@@ -702,10 +708,10 @@ def admin_2(update: Update, context: CallbackContext):
 def picked_dishes(update: Update, context: CallbackContext):
     update.callback_query.answer()
     text = ''
-    for j, i in enumerate(context.chat_data):
+    for j, i in enumerate(context.chat_data['picked dish']):
         if update.callback_query.data == i:
-            for k in context.chat_data[i]['picked dish']:
-                text += k + ': ' + str(context.chat_data[i]['picked dish'][k]) + '\n'
+            for k in context.chat_data['picked dish'][i]:
+                text += k + ': ' + str(context.chat_data['picked dish'][i][k]) + '\n'
     
     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
