@@ -4,7 +4,6 @@ import pickle
 import random
 import threading
 import time
-from ast import literal_eval
 from re import match
 
 import telegram
@@ -26,18 +25,16 @@ HI, CATEGORY, DISH = range(20, 23)
 ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
 DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE = range(40, 44)
 
-with open('users.txt', 'r') as f:
-    all_ = f.read()
-    if len(all_) == 0:
+with open('users.pkl', 'rb') as f:
+    try:
+        users = pickle.load(f)
+    except:
         users = {}
-    else:
-        users = literal_eval(all_)
 
-with open('users_data.txt', 'r') as df:
-    read = df.read()
-    if len(read) == 0:
-        save = literal_eval(read)
-    else:
+with open('users_data.pkl', 'rb') as df:
+    try:
+        save = pickle.load(df)
+    except:
         save = {}
 
 global data, user
@@ -48,16 +45,16 @@ def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
-    
     with open('data.pkl', 'rb') as f:
         data = pickle.load(f)
+    print(user)
     
-    with open('users_data_picked.txt', 'r') as df:
-        read = df.read()
-        if len(read) == 0:
+    with open('users_data_picked.pkl', 'rb') as fi:
+        try:
+            reed = pickle.load(fi)
+        except:
             reed = {'picked dish': {}}
-        else:
-            reed = literal_eval(read)
+        
         if user in reed['picked dish']:
             context.chat_data['picked dish'] = reed['picked dish']
         else:
@@ -66,27 +63,25 @@ def start(update: Update, context: CallbackContext):
             for i in data[user]:
                 context.chat_data['picked dish'][user][i['name']] = 0
     
-    print(context.chat_data)
-    
-    if id_ not in users.keys():
+    if user == 'linayolkina' or user == 'deadpimp':
+        return admin(update, context)
+    elif id_ not in users.keys():
         users[str(id_)] = user
         
         # get users in dict and save them in txt
-        with open('users.txt', 'w') as s:
-            s.write(str(users))
+        with open('users.pkl', 'wb') as s:
+            pickle.dump(users, s)
     
-    if user not in data.keys():
+    if user not in data.keys() or user == 'ken_kilua':
         
         def saving():
-            threading.Timer(15.0, saving).start()
-            with open('users_data.txt', 'w') as f:
-                save[user] = str(context.user_data)
-                f.write(str(save))
-
+            threading.Timer(60.0, saving).start()
+            with open('users_data.pkl', 'wb') as u:
+                save[user] = context.user_data
+                pickle.dump(save, u)
+        
         saving()
         return wanna_buy(update, context)
-    elif user == 'deadpimp':
-        return admin(update, context)
     else:
         return wats_up(update, context)
 
@@ -607,8 +602,8 @@ def send_dish(update: Update, context: CallbackContext):
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
             print(context.chat_data)
-            with open('users_data_picked.txt', 'w') as ud:
-                ud.write(str(context.chat_data))
+            with open('users_data_picked.pkl', 'wb') as ud:
+                pickle.dump(context.chat_data, ud)
 
     if choice == 'txt':
         for i, j in enumerate(data[username]):
@@ -702,8 +697,8 @@ def admin_2(update: Update, context: CallbackContext):
         return cancel(update, context)
 
     elif update.callback_query.data == 'answers':
-        with open('users_data.txt', 'r') as df:
-            context.bot_data['data'] = literal_eval(df.read())
+        with open('users_data.pkl', 'rb') as df:
+            context.bot_data['data'] = pickle.load(df)
         for i in context.bot_data['data']:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
@@ -722,7 +717,6 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return DATA_CHANGE
-
 
     elif update.callback_query.data == 'interface':
         for i in data:
@@ -769,6 +763,7 @@ def data_change(update: Update, context: CallbackContext):
         return NEW_USER
     for i in data:
         if update.callback_query.data == i:
+    
             s, k = 0, 0
             context.bot_data['picked user'] = i
             for n, j in enumerate(data[i]):
@@ -780,11 +775,32 @@ def data_change(update: Update, context: CallbackContext):
                 keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
             text += '\npick what do u want to change here'
             # context.bot_data['text data'] = text
+    
             context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                           message_id=update.effective_message.message_id,
                                           reply_markup=InlineKeyboardMarkup(keyboard))
-            print('good 9')
             return WHAT_CHANGE
+
+
+def add_new_user(update: Update, context: CallbackContext):
+    data[update.message.text] = []
+    basic_dict = {
+                     "number": 1,
+                     "callback": "dish_0",
+        
+                     "name": "",
+                     "category": '',
+                     "difficulty": "very hard",
+                     "ingredients": "",
+                     "recipy": "",
+                 },
+    data[update.message.text] += basic_dict
+    update.message.reply_text(f'ok{"." * 100}\nwanna save or continue?',
+                              reply_markup=InlineKeyboardMarkup([
+                                  [InlineKeyboardButton('save', callback_data='save'),
+                                   InlineKeyboardButton('continue', callback_data='continue')
+                                   ]]))
+    return SAVE_UPDATE
 
 
 def what_do_we_change(update: Update, context: CallbackContext):
@@ -895,9 +911,8 @@ def user_data(update: Update, context: CallbackContext):
     for i in context.bot_data['data']:
         if update.callback_query.data == i:
             txt = ''
-            pars = literal_eval(context.bot_data['data'][i])
-            for j in pars:
-                txt += j + ': ' + str(pars[j]) + '\n\n'
+            for j in context.bot_data['data'][i]:
+                txt += j + ': ' + str(context.bot_data['data'][i][j]) + '\n\n'
             context.bot.edit_message_text(txt,
                                           message_id=update.effective_message.message_id,
                                           chat_id=update.effective_chat.id,
@@ -1027,7 +1042,8 @@ def main():
             DATA_CHANGE_2: [CallbackQueryHandler(data_change_2)],
             DATA_CHANGE_3: [MessageHandler(Filters.text, data_change_3)],
             SAVE_UPDATE: [CallbackQueryHandler(save_update)],
-            INTERFACE: [CallbackQueryHandler(interface)]
+            INTERFACE: [CallbackQueryHandler(interface)],
+            NEW_USER: [MessageHandler(Filters.text, add_new_user)],
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
