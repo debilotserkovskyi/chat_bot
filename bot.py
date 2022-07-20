@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 import random
 import threading
 import time
@@ -10,8 +11,6 @@ import telegram
 from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
-
-from data import data
 
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 API_GEO = os.environ.get('geo_api')
@@ -25,7 +24,7 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 HI, CATEGORY, DISH = range(20, 23)
 
 ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
-DATA_CHANGE_3, WHAT_CHANGE = range(40, 42)
+DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE = range(40, 43)
 
 with open('users.txt', 'r') as f:
     all_ = f.read()
@@ -43,10 +42,13 @@ with open('users_data.txt', 'r') as df:
 
 
 def start(update: Update, context: CallbackContext):
-    global users
+    global users, data
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
+    
+    with open('data.pkl', 'rb') as f:
+        data = pickle.load(f)
     
     with open('users_data_picked.txt', 'r') as df:
         read = df.read()
@@ -793,7 +795,38 @@ def data_change_3(update: Update, context: CallbackContext):
         if context.bot_data['changing'][i]:
             context.bot_data['changing'][i] = False
             data[context.bot_data['picked user']][context.bot_data['changing']['number']][i] = update.message.text
-    return cancel(update, context)
+    update.message.reply_text(f'ok{"." * 100}\nwanna save or continue?',
+                              reply_markup=InlineKeyboardMarkup([
+                                  [InlineKeyboardButton('save', callback_data='save'),
+                                   InlineKeyboardButton('continue', callback_data='continue')
+                                   ]]))
+    return SAVE_UPDATE
+
+
+def save_update(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    text, keyboard = '', [[]]
+    if update.callback_query.data == 'save':
+        with open('data.pkl', 'wb') as save_:
+            pickle.dump(data, save_)
+    
+    
+    elif update.callback_query.data == 'continue':
+        for i in data:
+            if i == context.bot_data['picked user']:
+                s, k = 0, 0
+                for n, j in enumerate(data[i]):
+                    text += str(n + 1) + ': ' + str(j['name']) + '\n'
+                    s += 1
+                    if s % 7 == 0:
+                        keyboard.append([])
+                        k += 1
+                    keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
+                text += '\npick what do u want to change here'
+        context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+        return WHAT_CHANGE
 
 
 def picked_dishes(update: Update, context: CallbackContext):
@@ -956,6 +989,7 @@ def main():
             WHAT_CHANGE: [CallbackQueryHandler(what_do_we_change)],
             DATA_CHANGE_2: [CallbackQueryHandler(data_change_2)],
             DATA_CHANGE_3: [MessageHandler(Filters.text, data_change_3)],
+            SAVE_UPDATE: [CallbackQueryHandler(save_update)]
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
