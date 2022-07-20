@@ -735,25 +735,15 @@ def data_change(update: Update, context: CallbackContext):
         if update.callback_query.data == i:
             s, k = 0, 0
             context.bot_data['picked user'] = i
-            print('good 1')
             for n, j in enumerate(data[i]):
-                print('good 2')
                 text += str(n + 1) + ': ' + str(j['name']) + '\n'
-                print('good 3')
                 s += 1
-                print('good 4')
-    
                 if s % 7 == 0:
-                    print('good 5')
-        
                     keyboard.append([])
                     k += 1
-                print('good 6')
                 keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
-            print('good 7')
             text += '\npick what do u want to change here'
             # context.bot_data['text data'] = text
-            print('good 8')
             context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                           message_id=update.effective_message.message_id,
                                           reply_markup=InlineKeyboardMarkup(keyboard))
@@ -772,7 +762,6 @@ def what_do_we_change(update: Update, context: CallbackContext):
             text += str(j['number']) + ': ' + str(j['name']) + '\n\n' + 'CATEGORY: ' + str(j['category']) + '\n\n'
             # str(j['ingredients'][:150]) + '...\n\n' + '*RECIPY*: '+str(j['recipy'][:150]) + '...'
     for k in context.bot_data['recipy data']:
-        
         if k == 'number':
             continue
         else:
@@ -786,19 +775,13 @@ def what_do_we_change(update: Update, context: CallbackContext):
 def data_change_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
     text = ''
-    if update.callback_query.data == 'name':
-        text = 'type a new dish name below'
-        context.bot_data['changing']['name'] = True
-    elif update.callback_query.data == 'category':
-        context.bot_data['changing']['category'] = True
-        text = 'type a new dish category below'
-    elif update.callback_query.data == 'ingredients':
-        context.bot_data['changing']['ingredients'] = True
-        text = 'type a new ingredients below'
-    elif update.callback_query.data == 'recipy':
-        context.bot_data['changing']['recipy'] = True
-        text = 'type a new recipy below'
-    
+    for i in context.bot_data['recipy data']:
+        context.bot_data['changing'][i] = False
+        if update.callback_query.data == i:
+            context.bot_data['changing'][i] = True
+            text = 'it was: \n\n' + data[context.bot_data['picked user']][context.bot_data['changing']['number']] \
+                [i] + '\n\nTYPE A NEW ONE BELOW'
+
     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
                                   reply_markup=None)
@@ -806,10 +789,11 @@ def data_change_2(update: Update, context: CallbackContext):
 
 
 def data_change_3(update: Update, context: CallbackContext):
-    if context.bot_data['changing']['name']:
-        context.bot_data['changing']['name'] = False
-        data[context.bot_data['picked user']][context.bot_data['changing']['number']]['name'] = update.message.text
-        return cancel(update, context)
+    for i in context.bot_data['recipy data']:
+        if context.bot_data['changing'][i]:
+            context.bot_data['changing'][i] = False
+            data[context.bot_data['picked user']][context.bot_data['changing']['number']][i] = update.message.text
+    return cancel(update, context)
 
 
 def picked_dishes(update: Update, context: CallbackContext):
