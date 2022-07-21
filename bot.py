@@ -23,7 +23,8 @@ WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = r
 HI, CATEGORY, DISH = range(20, 23)
 
 ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
-DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE = range(40, 44)
+DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
+CHANGE_USERNAME = range(50, 51)
 
 with open('users.pkl', 'rb') as f:
     try:
@@ -647,7 +648,7 @@ def admin(update: Update, context: CallbackContext):
                                          'v hrib yoho shche ne zvelo.']
     context.bot_data['admin_buttons'] = {'send message': 'send message to a user/to all users',
                                          'answers': 'see users answers for query',
-                                         'data': 'change or add recipy data',
+                                         'data': 'change or add recipy data or delete user data',
                                          'start_pressed': 'see who pressed /start',
                                          'picked': 'see which dishes are picked',
                                          'interface': 'see how interface looks like for a user'}
@@ -709,10 +710,10 @@ def admin_2(update: Update, context: CallbackContext):
         return DATA
 
     elif update.callback_query.data == 'data':
-        for i in data:
-            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        keyboard.append([InlineKeyboardButton('change existing', callback_data='change')])
+        keyboard.append([InlineKeyboardButton('del or change username', callback_data='del')])
         keyboard.append([InlineKeyboardButton('add new user', callback_data='new user')])
-        text = 'pick a user to change or add a new one'
+        text = 'pick a user to change or add a new one or delete or change his/her/their name'
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
@@ -751,9 +752,8 @@ def interface(update: Update, context: CallbackContext):
 
 def data_change(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    context.bot_data['recipy data'] = ['number', 'name', 'category', 'ingredients', 'recipy']
-    keyboard = [[]]
-    text = f'here is his/her/their menu:\n\n'
+    context.bot_data['recipy data'] = ['number', 'name', 'category', 'ingredients', 'recipy', 'change', 'delete']
+    keyboard, text = [[]], ''
     if update.callback_query.data == 'new user':
         text = "type his/her/their username carefully!\n" \
                "*Note, that u need to type it without @ symbol otherwise it won't work*"
@@ -761,9 +761,29 @@ def data_change(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id, reply_markup=None,
                                       parse_mode=ParseMode.MARKDOWN)
         return NEW_USER
+    if update.callback_query.data == 'del':
+        text += 'pick who you want to delete or change username. once you do it you cannot restore the data'
+        for i in data:
+            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+        return DEL_CHANGE
+    elif update.callback_query.data == 'change':
+        for i in data:
+            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+        text += 'pick who you wanna change'
+        context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+        return CHANGE_USER
+
+
+def change_user(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    text, keyboard = f'here is his/her/their menu:\n\n', [[]]
     for i in data:
         if update.callback_query.data == i:
-    
             s, k = 0, 0
             context.bot_data['picked user'] = i
             for n, j in enumerate(data[i]):
@@ -774,31 +794,75 @@ def data_change(update: Update, context: CallbackContext):
                     k += 1
                 keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
             text += '\npick what do u want to change here'
-            # context.bot_data['text data'] = text
-    
             context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                           message_id=update.effective_message.message_id,
                                           reply_markup=InlineKeyboardMarkup(keyboard))
             return WHAT_CHANGE
 
 
+def del_change(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    context.bot_data['del or change'] = update.callback_query.data
+    keyboard = [[InlineKeyboardButton('del', callback_data='delete'),
+                 InlineKeyboardButton('change', callback_data='change')]]
+    context.bot.edit_message_text(f'change username or delete? {context.bot_data["del"]}',
+                                  chat_id=update.effective_chat.id,
+                                  message_id=update.effective_message.message_id,
+                                  reply_markup=InlineKeyboardMarkup(keyboard))
+    return DEL_CHANGE2
+
+
+def del_change2(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    keyboard = [[InlineKeyboardButton('save', callback_data='save'),
+                 InlineKeyboardButton('cancel', callback_data='cancel')]]
+    if update.callback_query.data == 'delete':
+        for i in data:
+            if context.bot_data['del or change'] == i:
+                del data[i]
+                context.bot.edit_message_text('done', chat_id=update.effective_chat.id,
+                                              message_id=update.effective_message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(keyboard))
+                return SAVE_UPDATE
+    elif update.callback_query.data == 'change':
+        context.bot.edit_message_text("type new username\n*Note, that u need to type it without @ "
+                                      "symbol otherwise it won't work*", chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return CHANGE_USERNAME
+
+
+def change_username(update: Update, context: CallbackContext):
+    print(data)
+    keyboard = [[InlineKeyboardButton('save', callback_data='save'),
+                 InlineKeyboardButton('cancel', callback_data='cancel')]]
+    for i in data:
+        if context.bot_data['del or change'] == i:
+            data[update.message.text] = data[i]
+            del data[i]
+            context.bot.edit_message_text('done', chat_id=update.effective_chat.id,
+                                          message_id=update.effective_message.message_id,
+                                          reply_markup=InlineKeyboardMarkup(keyboard))
+            return SAVE_UPDATE
+
+
 def add_new_user(update: Update, context: CallbackContext):
     data[update.message.text] = []
+    context.bot_data['new user'] = update.message.text
     basic_dict = {
                      "number": 1,
                      "callback": "dish_0",
         
                      "name": "",
                      "category": '',
-                     "difficulty": "very hard",
+                     "difficulty": "",
                      "ingredients": "",
                      "recipy": "",
                  },
     data[update.message.text] += basic_dict
-    update.message.reply_text(f'ok{"." * 100}\nwanna save or continue?',
+    update.message.reply_text(f'ok{"." * 333} u need to save to continue?',
                               reply_markup=InlineKeyboardMarkup([
-                                  [InlineKeyboardButton('save', callback_data='save'),
-                                   InlineKeyboardButton('continue', callback_data='continue')
+                                  [InlineKeyboardButton('save', callback_data='save_new'),
                                    ]]))
     return SAVE_UPDATE
 
@@ -880,6 +944,20 @@ def save_update(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return WHAT_CHANGE
+    elif update.callback_query.data == 'save_new':
+        text = f"ok, now type dish number\n*it's important because this is callback and this is how bot send this " \
+               f"recipe to a user, so do not repeat*\n{data[context.bot_data['new user']]}"
+        update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        return NUMBER
+    elif update.callback_query.data == 'cancel':
+        context.bot.edit_message_text('canceled, pres /start', chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return cancel(update, context)
+
+
+def new_number(update: Update, context: CallbackContext):
+    pass
 
 
 def picked_dishes(update: Update, context: CallbackContext):
@@ -1044,6 +1122,11 @@ def main():
             SAVE_UPDATE: [CallbackQueryHandler(save_update)],
             INTERFACE: [CallbackQueryHandler(interface)],
             NEW_USER: [MessageHandler(Filters.text, add_new_user)],
+            NUMBER: [MessageHandler(Filters.text, new_number)],
+            CHANGE_USER: [CallbackQueryHandler(change_user)],
+            DEL_CHANGE: [CallbackQueryHandler(del_change)],
+            DEL_CHANGE2: [CallbackQueryHandler(del_change2)],
+            CHANGE_USERNAME: [MessageHandler(Filters.text, change_username)],
         },
         fallbacks=[CommandHandler('start', start)],
         run_async=True,
