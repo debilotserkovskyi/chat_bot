@@ -437,7 +437,7 @@ def last_que(update: Update, context: CallbackContext):
     if update.callback_query.data == 'alright':
         context.user_data['in a process'] = False
         context.bot.forward_message(message_id=update.effective_message.message_id,
-                                    chat_id=133495703,
+                                    chat_id=192681173,
                                     from_chat_id=update.effective_chat.id)
         context.bot.edit_message_text('this is it for now 🧡 Lina will write you back ASAP.\n'
                                       'have a delicious continuation of the day',
