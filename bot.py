@@ -1215,15 +1215,15 @@ def contacts(update: Update, context: CallbackContext):
     contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
                       [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
     reply_markup_start = InlineKeyboardMarkup(contact_button)
-    update.message.reply_text(text="this is Lina's contacts:", reply_markup=reply_markup_start)
+    update.message.reply_text(text="here are Lina's contacts:", reply_markup=reply_markup_start)
 
 
 def help_command(update: Update, context: CallbackContext):
-    text = f"so, this is bot that should help you to answer the question 'WHAT TO EAT?'\nOnce you don't have your " \
-           f"own menu you need to pass the query, which stats when you press /start command - than ASAP you will get " \
-           f"your personal menu. And when it will be ready -- after you press /start command you'll have access to " \
-           f"the menu\n\n Enjoy this bot! If you have any problem by using this bot just send a message directly " \
-           f"to LINA. its easily find her contacts to press /contact button"
+    text = f"so, this is a bot that should help you to answer the question 'WHAT TO EAT?'\nOnce you don't have your " \
+           f"own menu, you need to pass the query, which stats when you press /start command - than ASAP you will get " \
+           f"your personal menu. And when it will be ready -- after you press /start command, you'll have access to " \
+           f"the menu\n\nEnjoy this bot! If you have any problem using this bot, just send a message directly to " \
+           f"LINA. its easy to find her contacts to press /contact button "
     update.message.reply_text(text=text)
 
 
