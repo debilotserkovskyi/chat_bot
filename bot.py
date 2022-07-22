@@ -25,7 +25,7 @@ HI, CATEGORY, DISH = range(20, 23)
 
 ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
 DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
-CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY = range(50, 54)
+CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
 
 with open('users.pkl', 'rb') as f:
     try:
@@ -1124,13 +1124,14 @@ def send_message(update: Update, context: CallbackContext):
         if update.callback_query.data == i:
             context.bot_data['admin send message: users_id'].append(update.callback_query.data)
             context.bot_data['admin send message: user_name'].append(users[i])
-            text = f'ok, what message do you want to send to @{users[i]}?'
+            text = f'ok, what message do you want to send to @{users[i]}? \n\nIf it is file than it should be .pdf ' \
+                   f'and you need to send it separately from text message'
         
         elif update.callback_query.data == 'send to all':
             context.bot_data['admin send message: users_id'].append(i)
             context.bot_data['admin send message: user_name'].append(users[i])
             text = f'ok, what message do you want to send to all users?'
-    
+
     context.bot.edit_message_text(text=text,
                                   message_id=update.effective_message.message_id,
                                   chat_id=update.effective_chat.id,
@@ -1139,19 +1140,46 @@ def send_message(update: Update, context: CallbackContext):
 
 
 def second_que_txt(update: Update, context: CallbackContext):
-    message = ''
     if update.message.text:
         message = context.bot_data['admin send message: message'] = update.message.text
-    elif update.message.photo:
-        pass
-    elif update.message.sticker:
-        pass
-    
-    update.message.reply_text(
-        text=f"so, message:\n\n{message}\n\nto user(s): @{context.bot_data['admin send message: user_name']}",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
-                                            InlineKeyboardButton('change', callback_data='change')]]))
-    return SENDING
+        update.message.reply_text(
+            text=f"so, message:\n\n{message}\n\nto user(s): @{context.bot_data['admin send message: user_name']}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
+                                                InlineKeyboardButton('change', callback_data='change')]]))
+        return SENDING
+    elif update.message.document:
+        context.bot.get_file(update.message.document).download()
+        context.bot_data['file'] = update.message.document['file_name']
+        with open(f"pdf/{context.bot_data['file']}.pdf", 'wb') as f:
+            context.bot.get_file(update.message.document).download(out=f)
+            update.message.reply_text(
+                text=f"I kept it. wanna send?",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
+                                                    InlineKeyboardButton('cancel', callback_data='cancel')]]))
+        return SEND_DOCUMENT
+    else:
+        update.message.reply_text("i dont know this file type..... I BROKE PRES /start again")
+        return cancel(update, context)
+
+
+def sending_document(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'send':
+        document = open(f"pdf/{context.bot_data['file']}.pdf", 'rb')
+        for i in context.bot_data['admin send message: users_id']:
+            context.bot.send_document(
+                document=document,
+                chat_id=i)
+        context.bot.edit_message_text('done!',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return cancel(update, context)
+    elif update.callback_query.data == 'cancel':
+        context.bot.edit_message_text('canceled, press /start again', chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return cancel(update, context)
 
 
 def sending(update: Update, context: CallbackContext):
@@ -1162,11 +1190,11 @@ def sending(update: Update, context: CallbackContext):
                 text=context.bot_data['admin send message: message'],
                 chat_id=i
             )
-
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+        return cancel(update, context)
     elif update.callback_query.data == 'change':
         context.bot.edit_message_text('type a new one:',
                                       reply_markup=None,
@@ -1237,8 +1265,8 @@ def main():
             # admin panel:
             ADMIN: [CallbackQueryHandler(admin_2)],
             SEND_MESSAGE: [CallbackQueryHandler(send_message)],
-            SEND_MESSAGE_TXT: [MessageHandler(Filters.text | Filters.photo | Filters.voice | Filters.sticker,
-                                              second_que_txt)],
+            SEND_MESSAGE_TXT: [MessageHandler(Filters.text | Filters.document, second_que_txt)],
+            SEND_DOCUMENT: [CallbackQueryHandler(sending_document)],
             SENDING: [CallbackQueryHandler(sending)],
             DATA: [CallbackQueryHandler(user_data)],
             PICKED: [CallbackQueryHandler(picked_dishes)],
