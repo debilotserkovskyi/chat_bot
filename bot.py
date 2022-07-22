@@ -1219,11 +1219,11 @@ def contacts(update: Update, context: CallbackContext):
 
 
 def help_command(update: Update, context: CallbackContext):
-    text = f"so, this is a bot that should help you to answer the question 'WHAT TO EAT?'\nOnce you don't have your " \
-           f"own menu, you need to pass the query, which stats when you press /start command - than ASAP you will get " \
-           f"your personal menu. And when it will be ready -- after you press /start command, you'll have access to " \
-           f"the menu\n\nEnjoy this bot! If you have any problem using this bot, just send a message directly to " \
-           f"LINA. its easy to find her contacts to press /contact button "
+    text = f"so, this is a bot that should help you to answer the question 'WHAT TO EAT?'\nonce you don't have your " \
+           f"own menu, you need to pass the query, which starts when you press /start command - then ASAP you will " \
+           f"get your personal menu. And when it will be ready -- after you press /start command, you'll have access " \
+           f"to the menu\n\nenjoy this bot! If you have any problem using this bot, just send a message directly " \
+           f"to LINA. It's easy to find her contacts by pressing /contact button"
     update.message.reply_text(text=text)
 
 
