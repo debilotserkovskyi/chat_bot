@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import pickle
@@ -40,14 +41,18 @@ with open('users_data.pkl', 'rb') as df:
 
 global data, user
 
+
 def start(update: Update, context: CallbackContext):
     global users, data, user
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
     with open('data.pkl', 'rb') as f:
-        data = pickle.load(f)
-    print(user)
+        try:
+            data = pickle.load(f)
+        except:
+            data = {}
+    # print(user)
     
     with open('users_data_picked.pkl', 'rb') as fi:
         try:
@@ -183,7 +188,7 @@ def forth_que(update: Update, context: CallbackContext):
         geo_coder = OpenCageGeocode(API_GEO)
         results = geo_coder.reverse_geocode(update.message.location.latitude, update.message.location.longitude)
 
-        print(results)
+        # print(results)
         context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, "
                                       f"right?",
                                  chat_id=update.effective_chat.id,
@@ -279,7 +284,7 @@ def would_you(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks goes to top-4
 def ninth_que(update: Update, context: CallbackContext):
-    print(context.user_data)
+    # print(context.user_data)
 
     update.callback_query.answer()
 
@@ -408,13 +413,12 @@ def another_pain(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def checking(update: Update, context: CallbackContext, edit):
     txt = ''
-    print(context.user_data)
+    # print(context.user_data)
     for i in context.user_data.keys():
         if i == 'in a process' or i == 'changed':
             continue
         else:
             txt += i + ": " + str(context.user_data[i]) + ';\n\n'
-    print(txt)
     context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
                                  timeout=1)
     time.sleep(1)
@@ -605,9 +609,27 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-            print(context.chat_data)
             with open('users_data_picked.pkl', 'wb') as ud:
                 pickle.dump(context.chat_data, ud)
+        elif choice == 'random':
+            rand = random.randint(0, len(data[username]))
+            context.bot.deleteMessage(message_id=update.effective_message.message_id,
+                                      chat_id=update.effective_chat.id)
+            context.chat_data['picked dish'][username][data[username][rand]["name"]] += 1
+            context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
+                                     chat_id=query.message.chat_id,
+                                     parse_mode=ParseMode.MARKDOWN)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+            time.sleep(2)
+            context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
+                                     parse_mode=ParseMode.MARKDOWN)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+            time.sleep(2)
+            context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
+                                     parse_mode=ParseMode.MARKDOWN, )
+            with open('users_data_picked.pkl', 'wb') as ud:
+                pickle.dump(context.chat_data, ud)
+            return cancel(update, context)
 
     if choice == 'txt':
         for i, j in enumerate(data[username]):
@@ -703,7 +725,10 @@ def admin_2(update: Update, context: CallbackContext):
 
     elif update.callback_query.data == 'answers':
         with open('users_data.pkl', 'rb') as df:
-            context.bot_data['data'] = pickle.load(df)
+            try:
+                context.bot_data['data'] = pickle.load(df)
+            except:
+                context.bot_data['data'] = {}
         for i in context.bot_data['data']:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
@@ -811,7 +836,6 @@ def change_user(update: Update, context: CallbackContext):
         return back_to_changing(update, context)
     
     for i in data:
-        print(i)
         if update.callback_query.data == i:
             s, k = 0, 0
             context.bot_data['picked user'] = i
@@ -893,7 +917,7 @@ def add_new_user(update: Update, context: CallbackContext):
 
 
 def what_do_we_change(update: Update, context: CallbackContext):
-    print('What we change')
+    # print('What we change')
     update.callback_query.answer()
     text, keyboard = '', []
     context.bot_data['changing'] = {}
@@ -935,7 +959,7 @@ def new_number(update: Update, context: CallbackContext):
     data[context.bot_data['picked user']][i_]['number'] = len(data[context.bot_data['picked user']])
     data[context.bot_data['picked user']][i_]['callback'] = f"dish_{len(data[context.bot_data['picked user']])}"
     data[context.bot_data['picked user']][i_]['name'] = update.message.text
-    print(data[context.bot_data['picked user']])
+    # print(data[context.bot_data['picked user']])
     text = f"now add category.\n\n*all dishes are grouped by categories, for example all dishes with category RICE " \
            f"will be grouped and user can pick one of them, so type category which better describes this dish\nalso " \
            f"these categories for different dishes must be the same to group them, so if u have category <rice> it " \
@@ -946,7 +970,7 @@ def new_number(update: Update, context: CallbackContext):
 
 
 def add_category(update: Update, context: CallbackContext):
-    print(data[context.bot_data['picked user']])
+    # print(data[context.bot_data['picked user']])
     data[context.bot_data['picked user']][len(data[context.bot_data['picked user']]) - 1][
         'category'] = update.message.text
     text = f"got you. \n\n*now you need to add ingredients to the data. \ntype everything in one msg*"
@@ -955,7 +979,7 @@ def add_category(update: Update, context: CallbackContext):
 
 
 def add_ing(update: Update, context: CallbackContext):
-    print(data[context.bot_data['picked user']])
+    # print(data[context.bot_data['picked user']])
     data[context.bot_data['picked user']][len(data[context.bot_data['picked user']]) - 1][
         'ingredients'] = update.message.text
     text = f"cool. last step is add recipy. \n\n*once again type everything in a single msg*"
@@ -964,7 +988,7 @@ def add_ing(update: Update, context: CallbackContext):
 
 
 def add_rec(update: Update, context: CallbackContext):
-    print(data[context.bot_data['picked user']])
+    # print(data[context.bot_data['picked user']])
     data[context.bot_data['picked user']][len(data[context.bot_data['picked user']]) - 1][
         'recipy'] = update.message.text
     text = f"ok, now check everithing:\n" \
@@ -985,7 +1009,7 @@ def data_change_2(update: Update, context: CallbackContext):
         context.bot_data['changing'][i] = False
         if update.callback_query.data == i:
             context.bot_data['changing'][i] = True
-            print(context.bot_data['changing']['number'])
+            # print(context.bot_data['changing']['number'])
             text = 'it was: \n\n' + data[context.bot_data['picked user']][context.bot_data['changing']['what_number']] \
                 [i] + '\n\nTYPE A NEW ONE BELOW'
     
@@ -1152,16 +1176,35 @@ def sending(update: Update, context: CallbackContext):
 
 
 # --------------------------------------------------------------------
-def error(update, context):
+def error(update: Update, context: CallbackContext):
     print("-" * 10, 'ERROR', '-' * 10)
+    print(update.effective_chat.username, datetime.datetime.now())
     print(f"\nupdate {update} \ncaused error {context.error}\n")
     print("-" * 10, 'ERROR', '-' * 10)
+
+
+def contacts(update: Update, context: CallbackContext):
+    contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
+                      [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
+    reply_markup_start = InlineKeyboardMarkup(contact_button)
+    update.message.reply_text(text="this is Lina's contacts:", reply_markup=reply_markup_start)
+
+
+def help_command(update: Update, context: CallbackContext):
+    text = f"so, this is bot that should help you to answer the question 'WHAT TO EAT?'\nOnce you don't have your " \
+           f"own menu you need to pass the query, which stats when you press /start command - than ASAP you will get " \
+           f"your personal menu. And when it will be ready -- after you press /start command you'll have access to " \
+           f"the menu\n\n Enjoy this bot! If you have any problem by using this bot just send a message directly " \
+           f"to LINA. its easily find her contacts to press /contact button"
+    update.message.reply_text(text=text)
 
 
 def main():
     updater = Updater(TELEGRAM_TOKEN, use_context=True)
     dp = updater.dispatcher
     dp.add_error_handler(error)
+    dp.add_handler(CommandHandler('contacts', contacts))
+    dp.add_handler(CommandHandler('help', help_command))
     conv_handler_new_user = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -1215,9 +1258,10 @@ def main():
             ADD_INGR: [MessageHandler(Filters.text, add_ing)],
             ADD_RECIPY: [MessageHandler(Filters.text, add_rec)]
         },
-        fallbacks=[CommandHandler('start', start)],
+        fallbacks=[MessageHandler(Filters.command, start)],
         run_async=True,
-        per_user=True
+        per_user=True,
+        allow_reentry=True
     )
     
     dp.add_handler(conv_handler_new_user)
