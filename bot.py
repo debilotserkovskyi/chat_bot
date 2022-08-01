@@ -52,7 +52,7 @@ def start(update: Update, context: CallbackContext):
             data = pickle.load(f)
         except:
             data = {}
-    # print(user)
+    print(user)
     
     with open('users_data_picked.pkl', 'rb') as fi:
         try:
@@ -62,20 +62,28 @@ def start(update: Update, context: CallbackContext):
         
         if user in reed['picked dish']:
             context.chat_data['picked dish'] = reed['picked dish']
+            for i in data[user]:
+                try:
+                    if context.chat_data['picked dish'][user][i['name']]:
+                        print(1)
+                except:
+                    context.chat_data['picked dish'][user][i['name']] = 0
         else:
-            context.chat_data['picked dish'] = reed['picked dish']
-            context.chat_data['picked dish'][user] = {}
             try:
+                context.chat_data['picked dish'] = {}
+                context.chat_data['picked dish'][user] = {}
                 for i in data[user]:
                     context.chat_data['picked dish'][user][i['name']] = 0
             except:
                 print('there is no user')
-    
+
+    print(context.chat_data['picked dish'][user])
+
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
     elif id_ not in users.keys():
         users[str(id_)] = user
-        
+    
         # get users in dict and save them in txt
         with open('users.pkl', 'wb') as s:
             pickle.dump(users, s)
@@ -136,6 +144,7 @@ def first_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def yalla(update: Update, context: CallbackContext):
     update.callback_query.answer()
+    context.user_data = {}
     if update.callback_query.data == 'yalla':
         context.user_data['in a process'] = True
         context.bot.edit_message_text(
@@ -527,7 +536,7 @@ def buttons(update: Update, context: CallbackContext):
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
-                                      text="chose the bento base")
+                                      text="chose a category")
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
         return CATEGORY
@@ -610,7 +619,6 @@ def send_dish(update: Update, context: CallbackContext):
         return HI
     for i in data[username]:
         if choice in i['callback']:
-            context.chat_data['picked dish'][username][i['name']] += 1
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id)
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
@@ -626,8 +634,10 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-            with open('users_data_picked.pkl', 'wb') as ud:
-                pickle.dump(context.chat_data, ud)
+            if update.effective_user.username not in ['deadpimp', 'linayolkina']:
+                context.chat_data['picked dish'][username][i['name']] += 1
+                with open('users_data_picked.pkl', 'wb') as ud:
+                    pickle.dump(context.chat_data, ud)
         elif choice == 'random':
             rand = random.randint(0, len(data[username]))
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
@@ -1116,7 +1126,6 @@ def user_data(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
-    
     for i in context.bot_data['data']:
         if update.callback_query.data == i:
             txt = ''
