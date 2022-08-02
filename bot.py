@@ -45,16 +45,9 @@ global data, user
 def start(update: Update, context: CallbackContext):
     global users, data, user
     user = update.effective_message.from_user.username
-    context.user_data['username'] = "@" + user
+    context.user_data[user] = {}
+    context.user_data[user]['username'] = '@' + user
     id_ = update.message.from_user.id
-
-    def saving():
-        threading.Timer(60.0, saving).start()
-        save[user] = context.user_data
-        with open('users_data.pkl', 'wb') as u:
-            pickle.dump(save, u)
-
-    saving()
 
     with open('data.pkl', 'rb') as f:
         try:
@@ -73,29 +66,15 @@ def start(update: Update, context: CallbackContext):
             pickle.dump(users, s)
 
     if user not in data.keys():
+        def saving():
+            threading.Timer(60.0, saving).start()
+            save[user] = context.user_data[user]
+            with open('users_data.pkl', 'wb') as u:
+                pickle.dump(save, u)
+    
+        saving()
         return wanna_buy(update, context)
     else:
-        # with open('users_data_picked.pkl', 'rb') as fi:
-        #     try:
-        #         reed = pickle.load(fi)
-        #     except:
-        #         reed = {'picked dish': {}}
-        #     if user in reed['picked dish']:
-        #         context.chat_data['picked dish'] = reed['picked dish']
-        #         for i in data[user]:
-        #             try:
-        #                 if context.chat_data['picked dish'][user][i['name']]:
-        #                     print(1)
-        #             except:
-        #                 context.chat_data['picked dish'][user][i['name']] = 0
-        #     else:
-        #         try:
-        #             context.chat_data['picked dish'] = {}
-        #             context.chat_data['picked dish'][user] = {}
-        #             for i in data[user]:
-        #                 context.chat_data['picked dish'][user][i['name']] = 0
-        #         except:
-        #             print('there is no user')
         return wats_up(update, context)
 
 
@@ -141,9 +120,8 @@ def first_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> check if user pressed yalla button and going to third one
 def yalla(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    context.user_data = {}
     if update.callback_query.data == 'yalla':
-        context.user_data['in a process'] = True
+        context.user_data[user]['in a process'] = True
         context.bot.edit_message_text(
             text='first, let me get to know you:\\) *what’s your name and surname?*\n\\(type everything in one '
                  'message\\)',
@@ -157,7 +135,7 @@ def yalla(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> getting name and ask about email
 def second_que(update: Update, context: CallbackContext):
-    context.user_data['name'] = update.message.text
+    context.user_data[user]['name'] = update.message.text
     if update.message.text:
         context.bot.send_message(text='*e\\-mail?*', chat_id=update.effective_chat.id,
                                  parse_mode=ParseMode.MARKDOWN_V2)
@@ -171,7 +149,7 @@ def third_que(update: Update, context: CallbackContext):
         '[a-zA-Z0-9.-]+(.[a-z]{2,}|.[0-9]{1,})$'
 
     if match(context.chat_data['pattern'], update.message.text):
-        context.user_data['email'] = update.message.text
+        context.user_data[user]['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
 
         context.bot.send_message(
@@ -188,7 +166,7 @@ def third_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> checks location and moving forward
 def forth_que(update: Update, context: CallbackContext):
     if update.message.text:
-        context.user_data['location'] = update.message.text
+        context.user_data[user]['location'] = update.message.text
 
         update.message.reply_text('*do you have allergies or products you don’t like \\(and even hate\\)?*\n'
                                   'write it down in a single message',
@@ -207,7 +185,7 @@ def forth_que(update: Update, context: CallbackContext):
                                  reply_markup=InlineKeyboardMarkup(
                                      [[InlineKeyboardButton('y', callback_data='y')],
                                       [InlineKeyboardButton('n', callback_data='n')]]))
-        context.user_data['location'] = results[0]['formatted']
+        context.user_data[user]['location'] = results[0]['formatted']
         return LOC_CHECK
 
 
@@ -234,7 +212,7 @@ def loc_check(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores allergies and asks about cooking
 def fifth_que(update: Update, context: CallbackContext):
-    context.user_data["allergies or products I don't like"] = update.message.text
+    context.user_data[user]["allergies or products I don't like"] = update.message.text
     if update.message.text:
         update.message.reply_text(
             '*do you love to cook?*',
@@ -249,7 +227,7 @@ def eighth_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     
     if update.callback_query.data == 'y':
-        context.user_data['cooking'] = 'YES'
+        context.user_data[user]['cooking'] = 'YES'
         context.bot.edit_message_text('*do you enjoy food shopping?*',
                                       parse_mode=ParseMode.MARKDOWN_V2,
                                       reply_markup=InlineKeyboardMarkup(
@@ -260,7 +238,7 @@ def eighth_que(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id)
         return SHOPPING
     elif update.callback_query.data == 'n':
-        context.user_data['cooking'] = 'no'
+        context.user_data[user]['cooking'] = 'no'
         context.bot.edit_message_text('*would you like to start loving it?*😉',
                                       parse_mode=ParseMode.MARKDOWN_V2,
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
@@ -277,9 +255,9 @@ def eighth_que(update: Update, context: CallbackContext):
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
-        context.user_data['wanna learn?'] = 'I would like'
+        context.user_data[user]['wanna learn?'] = 'I would like'
     elif update.callback_query.data == 'n':
-        context.user_data['wanna learn?'] = 'never'
+        context.user_data[user]['wanna learn?'] = 'never'
         context.bot.edit_message_text('sad :(',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
@@ -301,12 +279,12 @@ def would_you(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer and asks goes to top-4
 def ninth_que(update: Update, context: CallbackContext):
-    # print(context.user_data)
+    # print(context.user_data[user])
 
     update.callback_query.answer()
 
     if update.callback_query.data == 'y':
-        context.user_data['shopping'] = 'I do'
+        context.user_data[user]['shopping'] = 'I do'
         context.bot.edit_message_text(text='*where do you usually buy stuff*: markets, supermarkets etc\\.?',
                                       parse_mode=ParseMode.MARKDOWN_V2,
                                       reply_markup=None,
@@ -314,7 +292,7 @@ def ninth_que(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id)
         return WHERE
     elif update.callback_query.data == 'n':
-        context.user_data['shopping'] = "I don't"
+        context.user_data[user]['shopping'] = "I don't"
 
     context.bot.edit_message_text(text='*top\\-4 your last or most common orders in restaurant/wolt*',
                                   parse_mode=ParseMode.MARKDOWN_V2,
@@ -326,7 +304,7 @@ def ninth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> if he likes asks where user buys and goes to top-4
 def where_shop(update: Update, context: CallbackContext):
-    context.user_data['where'] = update.message.text
+    context.user_data[user]['where'] = update.message.text
     
     update.message.reply_text(text='*top\\-4 your last or most common orders in restaurant/wolt*',
                               parse_mode=ParseMode.MARKDOWN_V2,
@@ -336,7 +314,7 @@ def where_shop(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
 def tenth_que(update: Update, context: CallbackContext):
-    context.user_data['top-4'] = update.message.text
+    context.user_data[user]['top-4'] = update.message.text
     update.message.reply_text(text='*do you have your favorite/traditional meals?*'
                                    '\\(ex\\. if you’re eating same kind of breakfast everyday\\)',
                               parse_mode=ParseMode.MARKDOWN_V2)
@@ -345,7 +323,7 @@ def tenth_que(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about fav and goes to budget
 def eleventh_que(update: Update, context: CallbackContext):
-    context.user_data['fav'] = update.message.text
+    context.user_data[user]['fav'] = update.message.text
     
     update.message.reply_text(
         text="budget\\. *how much money you spend or want to spend for food per one week?*",
@@ -356,8 +334,8 @@ def eleventh_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about budget and goes to budget
 def twelfth_que(update: Update, context: CallbackContext):
     global must_delete, pains_dict
-    
-    context.user_data['budget'] = update.message.text
+
+    context.user_data[user]['budget'] = update.message.text
     
     pains_dict = {'no_just': 'no, i just want to diversify my daily menu',
                   'changed_diet': 'i changed my diet/became vegan 🌱 and need to find a menu solution for catching '
@@ -381,20 +359,22 @@ def twelfth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def pain(update: Update, context: CallbackContext):
     global must_delete, pains_dict, edit
-    context.user_data['changed'] = []
+    context.user_data[user]['changed'] = []
     
     update.callback_query.answer()
     if update.callback_query.data == 'no_just':
-        context.user_data['pain'] = "no, i just want to diversify my daily menu"
+        context.user_data[user]['pain'] = "no, i just want to diversify my daily menu"
     elif update.callback_query.data == 'changed_diet':
-        context.user_data['pain'] = "i changed my diet/became vegan  🌱 and need to find a menu solution for catching " \
-                                    "all the nutrients "
+        context.user_data[user][
+            'pain'] = "i changed my diet/became vegan  🌱 and need to find a menu solution for catching " \
+                      "all the nutrients "
     elif update.callback_query.data == 'problem':
-        context.user_data['pain'] = "i have a strong problem with not having a good lunch in the middle of working day"
+        context.user_data[user][
+            'pain'] = "i have a strong problem with not having a good lunch in the middle of working day"
     elif update.callback_query.data == 'time':
-        context.user_data['pain'] = "i don’t like/have time for cooking"
+        context.user_data[user]['pain'] = "i don’t like/have time for cooking"
     elif update.callback_query.data == 'less_money':
-        context.user_data['pain'] = "i want to spent less money on my food"
+        context.user_data[user]['pain'] = "i want to spent less money on my food"
     elif update.callback_query.data == 'another':
         must_delete = context.bot.edit_message_text(text='write it below then',
                                                     chat_id=update.effective_chat.id,
@@ -424,7 +404,7 @@ def pain(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain and goes to next step
 def another_pain(update: Update, context: CallbackContext):
-    context.user_data['pain'] = update.message.text
+    context.user_data[user]['pain'] = update.message.text
     
     edit = context.bot.send_message(text='cool! now check your answers plz',
                                     chat_id=update.effective_chat.id,
@@ -436,12 +416,12 @@ def another_pain(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about pain and asks if there is another pain
 def checking(update: Update, context: CallbackContext, edit):
     txt = ''
-    # print(context.user_data)
-    for i in context.user_data.keys():
+    # print(context.user_data[user])
+    for i in context.user_data[user].keys():
         if i == 'in a process' or i == 'changed':
             continue
         else:
-            txt += i + ": " + str(context.user_data[i]) + ';\n\n'
+            txt += i + ": " + str(context.user_data[user][i]) + ';\n\n'
     context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
                                  timeout=1)
     time.sleep(1)
@@ -458,7 +438,7 @@ def checking(update: Update, context: CallbackContext, edit):
 def last_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'alright':
-        context.user_data['in a process'] = False
+        context.user_data[user]['in a process'] = False
         context.bot.forward_message(message_id=update.effective_message.message_id,
                                     chat_id=632291350,
                                     from_chat_id=update.effective_chat.id)
@@ -469,7 +449,7 @@ def last_que(update: Update, context: CallbackContext):
         return cancel(update, context)
     elif update.callback_query.data == 'you_better_no':
         change = []
-        for i in context.user_data.keys():
+        for i in context.user_data[user].keys():
             if i not in ['username', 'in a process', 'changed']:
                 change.append([InlineKeyboardButton(i, callback_data=i)])
         context.bot.edit_message_text('pick what do you want to choose:',
@@ -483,9 +463,9 @@ def last_que(update: Update, context: CallbackContext):
 def change_que(update: Update, context: CallbackContext):
     global edit
     update.callback_query.answer()
-    for i in context.user_data.keys():
+    for i in context.user_data[user].keys():
         if update.callback_query.data == i:
-            context.user_data['changed'].append(i)
+            context.user_data[user]['changed'].append(i)
             edit = context.bot.edit_message_text(f'write your new {i}',
                                                  reply_markup=None,
                                                  chat_id=update.effective_chat.id,
@@ -496,9 +476,9 @@ def change_que(update: Update, context: CallbackContext):
 
 def changing_answer(update: Update, context: CallbackContext):
     context.bot.deleteMessage(message_id=update.effective_message.message_id, chat_id=update.effective_chat.id)
-    for i in context.user_data.keys():
+    for i in context.user_data[user].keys():
         if i in context.chat_data['wanna_change']:
-            context.user_data[i] = update.message.text
+            context.user_data[user][i] = update.message.text
     
     return checking(update, context, edit)
 
