@@ -47,37 +47,21 @@ def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
     context.user_data['username'] = "@" + user
     id_ = update.message.from_user.id
+
+    def saving():
+        threading.Timer(60.0, saving).start()
+        save[user] = context.user_data
+        with open('users_data.pkl', 'wb') as u:
+            pickle.dump(save, u)
+
+    saving()
+
     with open('data.pkl', 'rb') as f:
         try:
             data = pickle.load(f)
         except:
             data = {}
     print(user)
-    
-    with open('users_data_picked.pkl', 'rb') as fi:
-        try:
-            reed = pickle.load(fi)
-        except:
-            reed = {'picked dish': {}}
-        
-        if user in reed['picked dish']:
-            context.chat_data['picked dish'] = reed['picked dish']
-            for i in data[user]:
-                try:
-                    if context.chat_data['picked dish'][user][i['name']]:
-                        print(1)
-                except:
-                    context.chat_data['picked dish'][user][i['name']] = 0
-        else:
-            try:
-                context.chat_data['picked dish'] = {}
-                context.chat_data['picked dish'][user] = {}
-                for i in data[user]:
-                    context.chat_data['picked dish'][user][i['name']] = 0
-            except:
-                print('there is no user')
-
-    print(context.chat_data['picked dish'][user])
 
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
@@ -89,16 +73,29 @@ def start(update: Update, context: CallbackContext):
             pickle.dump(users, s)
 
     if user not in data.keys():
-    
-        def saving():
-            threading.Timer(60.0, saving).start()
-            with open('users_data.pkl', 'wb') as u:
-                save[user] = context.user_data
-                pickle.dump(save, u)
-    
-        saving()
         return wanna_buy(update, context)
     else:
+        # with open('users_data_picked.pkl', 'rb') as fi:
+        #     try:
+        #         reed = pickle.load(fi)
+        #     except:
+        #         reed = {'picked dish': {}}
+        #     if user in reed['picked dish']:
+        #         context.chat_data['picked dish'] = reed['picked dish']
+        #         for i in data[user]:
+        #             try:
+        #                 if context.chat_data['picked dish'][user][i['name']]:
+        #                     print(1)
+        #             except:
+        #                 context.chat_data['picked dish'][user][i['name']] = 0
+        #     else:
+        #         try:
+        #             context.chat_data['picked dish'] = {}
+        #             context.chat_data['picked dish'][user] = {}
+        #             for i in data[user]:
+        #                 context.chat_data['picked dish'][user][i['name']] = 0
+        #         except:
+        #             print('there is no user')
         return wats_up(update, context)
 
 
@@ -634,15 +631,15 @@ def send_dish(update: Update, context: CallbackContext):
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-            if update.effective_user.username not in ['deadpimp', 'linayolkina']:
-                context.chat_data['picked dish'][username][i['name']] += 1
-                with open('users_data_picked.pkl', 'wb') as ud:
-                    pickle.dump(context.chat_data, ud)
+            # if update.effective_user.username not in ['deadpimp', 'linayolkina']:
+            #     context.chat_data['picked dish'][username][i['name']] += 1
+            #     with open('users_data_picked.pkl', 'wb') as ud:
+            #         pickle.dump(context.chat_data, ud)
         elif choice == 'random':
             rand = random.randint(0, len(data[username]))
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id)
-            context.chat_data['picked dish'][username][data[username][rand]["name"]] += 1
+            # context.chat_data['picked dish'][username][data[username][rand]["name"]] += 1
             context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
@@ -702,7 +699,7 @@ def admin(update: Update, context: CallbackContext):
                                          'answers': 'see users answers for query',
                                          'data': 'change or add recipy data or delete user data',
                                          'start_pressed': 'see who pressed /start',
-                                         'picked': 'see which dishes are picked',
+                                         # 'picked': 'see which dishes are picked',
                                          'interface': 'see how interface looks for a user'}
     admins_button = []
     for i in context.bot_data['admin_buttons'].keys():
@@ -721,7 +718,7 @@ def admin_2(update: Update, context: CallbackContext):
             keyboard.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
         keyboard.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
         keyboard.append([InlineKeyboardButton(f'back', callback_data='back')])
-        
+
         context.bot.edit_message_text(
             text='choose user who u want to send message:\n'
                  '!note that u can send message only to user who pressed start',
@@ -731,14 +728,14 @@ def admin_2(update: Update, context: CallbackContext):
         )
         return SEND_MESSAGE
 
-    elif update.callback_query.data == 'picked':
-        for i in context.chat_data['picked dish']:
-            keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        context.bot.edit_message_text('pick who:', chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(keyboard))
-        return PICKED
+    # elif update.callback_query.data == 'picked':
+    #     for i in context.chat_data['picked dish']:
+    #         keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
+    #     keyboard.append([InlineKeyboardButton('back', callback_data='back')])
+    #     context.bot.edit_message_text('pick who:', chat_id=update.effective_chat.id,
+    #                                   message_id=update.effective_message.message_id,
+    #                                   reply_markup=InlineKeyboardMarkup(keyboard))
+    #     return PICKED
 
     elif update.callback_query.data == 'start_pressed':
         text = f'here is {len(users)} users: \n\n'
@@ -1105,27 +1102,28 @@ def back_to_admin(update: Update, context: CallbackContext):
         return ADMIN
 
 
-def picked_dishes(update: Update, context: CallbackContext):
-    update.callback_query.answer()
-    text = ''
-    if update.callback_query.data == 'back':
-        return back_to_admin(update, context)
-    
-    for j, i in enumerate(context.chat_data['picked dish']):
-        if update.callback_query.data == i:
-            for k in context.chat_data['picked dish'][i]:
-                text += k + ': ' + str(context.chat_data['picked dish'][i][k]) + '\n'
-    
-    context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
-                                  message_id=update.effective_message.message_id,
-                                  reply_markup=None)
-    return cancel(update, context)
+# def picked_dishes(update: Update, context: CallbackContext):
+#     update.callback_query.answer()
+#     text = ''
+#     if update.callback_query.data == 'back':
+#         return back_to_admin(update, context)
+#
+#     for j, i in enumerate(context.chat_data['picked dish']):
+#         if update.callback_query.data == i:
+#             for k in context.chat_data['picked dish'][i]:
+#                 text += k + ': ' + str(context.chat_data['picked dish'][i][k]) + '\n'
+#
+#     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
+#                                   message_id=update.effective_message.message_id,
+#                                   reply_markup=None)
+#     return cancel(update, context)
 
 
 def user_data(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
+    print(context.bot_data['data'])
     for i in context.bot_data['data']:
         if update.callback_query.data == i:
             txt = ''
@@ -1295,7 +1293,7 @@ def main():
             SEND_DOCUMENT: [CallbackQueryHandler(sending_document)],
             SENDING: [CallbackQueryHandler(sending)],
             DATA: [CallbackQueryHandler(user_data)],
-            PICKED: [CallbackQueryHandler(picked_dishes)],
+            # PICKED: [CallbackQueryHandler(picked_dishes)],
             DATA_CHANGE: [CallbackQueryHandler(data_change)],
             WHAT_CHANGE: [CallbackQueryHandler(what_do_we_change)],
             DATA_CHANGE_2: [CallbackQueryHandler(data_change_2)],
