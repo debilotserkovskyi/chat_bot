@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import datetime
 import logging
 import os
@@ -8,9 +10,46 @@ import time
 from re import match
 
 import telegram
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
+
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+
+credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+
+spreadsheet_service = build('sheets', 'v4', credentials=credentials)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+
+# sheets.py
+
+
+def create():
+    spreadsheet_details = {
+        'properties': {
+            'title': 'alter data'
+        }
+    }
+    sheet = spreadsheet_service.spreadsheets().create(body=spreadsheet_details,
+                                                      fields='spreadsheetId').execute()
+    sheetId = sheet.get('spreadsheetId')
+    print('Spreadsheet ID: {0}'.format(sheetId))
+    permission1 = {
+        'type': 'user',
+        'role': 'writer',
+        'emailAddress': os.environ.get('my_email')
+    }
+    drive_service.permissions().create(fileId=sheetId, body=permission1).execute()
+    return sheetId
+
+
+create()
 
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 API_GEO = os.environ.get('geo_api')
@@ -47,6 +86,7 @@ def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
     context.user_data[user] = {}
     context.user_data[user]['username'] = '@' + user
+    context.user_data[user]['tag username'] = user
     id_ = update.message.from_user.id
 
     with open('data.pkl', 'rb') as f:
@@ -60,7 +100,7 @@ def start(update: Update, context: CallbackContext):
         return admin(update, context)
     elif id_ not in users.keys():
         users[str(id_)] = user
-    
+
         # get users in dict and save them in txt
         with open('users.pkl', 'wb') as s:
             pickle.dump(users, s)
@@ -68,9 +108,13 @@ def start(update: Update, context: CallbackContext):
     if user not in data.keys():
         def saving():
             threading.Timer(60.0, saving).start()
-            save[user] = context.user_data[user]
-            with open('users_data.pkl', 'wb') as u:
-                pickle.dump(save, u)
+            try:
+                save[context.user_data[user]['tag username']] = \
+                    context.user_data[context.user_data[user]['tag username']]
+                with open('users_data.pkl', 'wb') as u:
+                    pickle.dump(save, u)
+            except:
+                print(save)
     
         saving()
         return wanna_buy(update, context)
