@@ -9,47 +9,13 @@ import threading
 import time
 from re import match
 
+import gspread
+import gspread_dataframe as gdf
+import pandas as pd
 import telegram
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
-
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive'
-]
-
-credentials = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
-
-spreadsheet_service = build('sheets', 'v4', credentials=credentials)
-drive_service = build('drive', 'v3', credentials=credentials)
-
-
-# sheets.py
-
-
-def create():
-    spreadsheet_details = {
-        'properties': {
-            'title': 'alter data'
-        }
-    }
-    sheet = spreadsheet_service.spreadsheets().create(body=spreadsheet_details,
-                                                      fields='spreadsheetId').execute()
-    sheetId = sheet.get('spreadsheetId')
-    print('Spreadsheet ID: {0}'.format(sheetId))
-    permission1 = {
-        'type': 'user',
-        'role': 'writer',
-        'emailAddress': os.environ.get('my_email')
-    }
-    drive_service.permissions().create(fileId=sheetId, body=permission1).execute()
-    return sheetId
-
-
-create()
 
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 API_GEO = os.environ.get('geo_api')
@@ -66,11 +32,11 @@ ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_U
 DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
 CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
 
-with open('users.pkl', 'rb') as f:
-    try:
-        users = pickle.load(f)
-    except:
-        users = {}
+service_account = gspread.service_account(filename='alter-data-d9d2ce186348.json')
+
+sh = service_account.open('alter data')
+wk_answers = sh.worksheet('2022')
+wk_user = sh.worksheet('users')
 
 with open('users_data.pkl', 'rb') as df:
     try:
@@ -78,11 +44,14 @@ with open('users_data.pkl', 'rb') as df:
     except:
         save = {}
 
+df_users = pd.DataFrame(wk_user.get_all_records())
+df_answers = pd.DataFrame(wk_answers.get_all_records())
+
 global data, user
 
 
 def start(update: Update, context: CallbackContext):
-    global users, data, user
+    global data, user
     user = update.effective_message.from_user.username
     context.user_data[user] = {}
     context.user_data[user]['username'] = '@' + user
@@ -94,28 +63,26 @@ def start(update: Update, context: CallbackContext):
             data = pickle.load(f)
         except:
             data = {}
-    print(user)
 
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
     elif id_ not in users.keys():
         users[str(id_)] = user
 
-        # get users in dict and save them in txt
-        with open('users.pkl', 'wb') as s:
-            pickle.dump(users, s)
+        df_users.loc[len(df_users)] = [id_, user]
 
     if user not in data.keys():
+    
         def saving():
             threading.Timer(60.0, saving).start()
-            try:
-                save[context.user_data[user]['tag username']] = \
-                    context.user_data[context.user_data[user]['tag username']]
-                with open('users_data.pkl', 'wb') as u:
-                    pickle.dump(save, u)
-            except:
-                print(save)
-    
+            gdf.set_with_dataframe(wk_answers, df_answers)
+            # try:
+            #     save[context.user_data[user]['tag username']] = \
+            #         context.user_data[context.user_data[user]['tag username']]
+            #     with open('users_data.pkl', 'wb') as u:
+            #         pickle.dump(save, u)
+            # except:
+            #     print(save)
         saving()
         return wanna_buy(update, context)
     else:
