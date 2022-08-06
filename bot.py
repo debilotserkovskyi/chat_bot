@@ -38,13 +38,8 @@ sh = service_account.open('alter data')
 wk_answers = sh.worksheet('2022')
 wk_user = sh.worksheet('users')
 
-with open('users_data.pkl', 'rb') as df:
-    try:
-        save = pickle.load(df)
-    except:
-        save = {}
 
-global data, user, id_
+global data, user, id_, df_users
 
 df_answers = pd.DataFrame(wk_answers.get_all_records())
 
@@ -52,27 +47,34 @@ df_answers = pd.DataFrame(wk_answers.get_all_records())
 def update_answers(update: Update, context: CallbackContext):
     global df_answers
     print(datetime.datetime.now())
-    print(df_answers)
+    # print(df_answers)
     try:
         if context.user_data['id'] not in df_answers['id'].unique():
             df_answers = pd.concat([pd.DataFrame({'id': context.user_data['id']}, index=[0]), df_answers],
                                    ignore_index=True)
     except:
         print('first')
-    
+
     print(datetime.datetime.now())
     try:
         df_answers = df_answers.set_index('id')
     except:
         print('suka')
     print(datetime.datetime.now())
+
+    for i in context.user_data:
+        if i == 'id':
+            continue
+        else:
+            df_answers.loc[context.user_data['id'], i] = context.user_data[i]
+
     # df_answers.loc[id_, 'username'] = user
-    print(context.user_data)
+    # print(context.user_data)
     print(df_answers)
 
 
 def start(update: Update, context: CallbackContext):
-    global data, user, id_, df_answers
+    global data, user, id_, df_answers, df_users
     user = update.effective_message.from_user.username
     id_ = update.message.from_user.id
     update_answers(update, context)
@@ -743,6 +745,7 @@ def admin(update: Update, context: CallbackContext):
 def admin_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
     keyboard = []
+    global df_answers
     
     if update.callback_query.data == 'send message':
         for i in users.keys():
@@ -779,15 +782,13 @@ def admin_2(update: Update, context: CallbackContext):
         return cancel(update, context)
 
     elif update.callback_query.data == 'answers':
-        with open('users_data.pkl', 'rb') as df:
-            try:
-                context.bot_data['data'] = pickle.load(df)
-            except:
-                context.bot_data['data'] = {}
-        for i in context.bot_data['data']:
+        print(df_answers)
+        for i in df_answers['username']:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        context.bot.edit_message_text("pick who's data u wanna see:",
+        context.bot.edit_message_text("pick who's data u wanna see:\nor just click here:\n\n"
+                                      "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt"
+                                      "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0",
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1151,23 +1152,21 @@ def back_to_admin(update: Update, context: CallbackContext):
 
 
 def user_data(update: Update, context: CallbackContext):
+    global df_answers
     update.callback_query.answer()
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
-    print(context.bot_data['data'])
-    for i in context.bot_data['data']:
-        if update.callback_query.data == i:
-            txt = ''
-            for j in context.bot_data['data'][i]:
-                txt += j + ': ' + str(context.bot_data['data'][i][j]) + '\n\n'
-            context.bot.edit_message_text(txt,
-                                          message_id=update.effective_message.message_id,
-                                          chat_id=update.effective_chat.id,
-                                          reply_markup=None)
+    txt = ''
+    for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
+        txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
+    context.bot.edit_message_text(txt,
+                                  message_id=update.effective_message.message_id,
+                                  chat_id=update.effective_chat.id,
+                                  reply_markup=None)
 
 
 def send_message(update: Update, context: CallbackContext):
-    global users
+    global df_users
     update.callback_query.answer()
     context.bot_data['admin send message: users_id'], context.bot_data['admin send message: user_name'] = [], []
     text = ''
