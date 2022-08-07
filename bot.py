@@ -124,8 +124,9 @@ def cancel(update: Update, context: CallbackContext):
 # --------------------------------------------------------------------
 def wanna_buy(update: Update, context: CallbackContext):
     reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
-                    [InlineKeyboardButton('contact', callback_data='contact')]]
-    update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | PROJECT. wanna buy a menu?',
+                    [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
+                    [InlineKeyboardButton('want to read about the project', callback_data='read about')]]
+    update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | FOOD\nwanna buy a menu?',
                                         reply_markup=InlineKeyboardMarkup(reply_markup))
     return WELCOME
 
@@ -136,19 +137,52 @@ def first_que(update: Update, context: CallbackContext):
     query.answer()
     if query.data == 'YES':
         context.bot.edit_message_text(
-            text='oh yeah! so get ready for a food questionnaire to create your menu the most '
-                 'suitable to your FOOD LIFESTYLE, your tastes and the current season.',
+            text='oh yeah\\!🤘🏻\n\nso get ready for a *food questionnaire* to create your menu the most suitable to '
+                 'your FOOD LIFESTYLE, your tastes and the current season\\.',
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id,
+            parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yalla', callback_data='yalla')]]))
-    
-    if query.data == 'contact':
+
+    elif query.data == 'contact':
         contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/')],
                           [InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
         reply_markup_start = InlineKeyboardMarkup(contact_button)
         context.bot.edit_message_text(text="here:", reply_markup=reply_markup_start,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+        return cancel(update, context)
+    elif query.data == 'read about':
+        txt = '''
+ALTER | NATIVE | FOOD is about your personal food education. There are 4 different levels of it - products you can buy.
+
+LEVEL 1
+
+ALTER | NATIVE | MENU a customized menu, based on your food preferences, place you live and its local seasonal food.
+10 positions of your own menu. made exclusively by @linayolkina , designed as a culinary magazine. costs 350 shek.
+
+
+LEVEL 2
+
+ALTER | NATIVE | DELIVERY is combination of ALTER | NATIVE | MENU and delivery of all the grocery list of it to your
+house. all the products hand assembled from Shuk HaCarmel (available only in Israel). costs 500 shek + price of the
+products
+
+LEVEL 3
+
+ALTER | NATIVE | GOAL is for you if you have an appropriate pain toward to food or for couples/families. during two
+weeks we are finding the best solution for you, using different tools and making your FOOD PORTRAIT best and
+satisfying for you. costs 850 shek
+
+LEVEL 4
+
+ALTER | NATIVE | PREMIUM including ALTER | NATIVE | MENU + a FOOD DATE with @linayolkina, where you’re going to
+market, learning how to pick the best stuff and cooking together. Private master-class of cooking based on the menu
+you’ve got for you.'''
+        context.bot.edit_message_text(text=txt,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+    
         return cancel(update, context)
     
     return YES
@@ -160,7 +194,7 @@ def yalla(update: Update, context: CallbackContext):
     if update.callback_query.data == 'yalla':
         context.user_data['in a process'] = True
         context.bot.edit_message_text(
-            text='first, let me get to know you:\\) *what’s your name and surname?*\n\\(type everything in one '
+            text='first, let me get to know you:\\) \n\n*what’s your name and surname?*\n\n\\(type everything in one '
                  'message\\)',
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id,
@@ -176,8 +210,7 @@ def second_que(update: Update, context: CallbackContext):
     context.user_data['name'] = update.message.text
     print(context.user_data)
     if update.message.text:
-        context.bot.send_message(text='*e\\-mail?*', chat_id=update.effective_chat.id,
-                                 parse_mode=ParseMode.MARKDOWN_V2)
+        context.bot.send_message(text='e-mail?', chat_id=update.effective_chat.id)
         update_answers(update, context)
         return EMAIL
 
@@ -193,7 +226,7 @@ def third_que(update: Update, context: CallbackContext):
         loc = [[KeyboardButton('send location', request_location=True, )]]
     
         context.bot.send_message(
-            text='ok\\!\n*country and city you currently reside?*\n\\(u may use button location\\)',
+            text='ok\\!\n\n*country and city you currently reside?*\n\n\\(u may use button location\\)',
             chat_id=update.effective_chat.id,
             reply_markup=ReplyKeyboardMarkup(loc),
             parse_mode=ParseMode.MARKDOWN_V2)
@@ -208,8 +241,8 @@ def third_que(update: Update, context: CallbackContext):
 def forth_que(update: Update, context: CallbackContext):
     if update.message.text:
         context.user_data['location'] = update.message.text
-        
-        update.message.reply_text('*do you have allergies or products you don’t like \\(and even hate\\)?*\n'
+
+        update.message.reply_text('*do you have allergies or products you don’t like \\(and even hate\\)?*\n\n'
                                   'write it down in a single message',
                                   reply_markup=None,
                                   parse_mode=ParseMode.MARKDOWN_V2)
@@ -236,7 +269,7 @@ def loc_check(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'y':
         context.bot.edit_message_text(
-            '*do you have allergies or products you don’t like \\(and even hate\\)*?\n'
+            '*do you have allergies or products you don’t like \\(and even hate\\)*?\n\n'
             'write it down in a single message',
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id,
@@ -257,8 +290,7 @@ def fifth_que(update: Update, context: CallbackContext):
     update_answers(update, context)
     if update.message.text:
         update.message.reply_text(
-            '*do you love to cook?*',
-            parse_mode=ParseMode.MARKDOWN_V2,
+            'do you love to cook?',
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
                                                 InlineKeyboardButton('n', callback_data='n')]]))
         return COOK
@@ -270,8 +302,7 @@ def eighth_que(update: Update, context: CallbackContext):
     
     if update.callback_query.data == 'y':
         context.user_data['cooking'] = 'YES'
-        context.bot.edit_message_text('*do you enjoy food shopping?*',
-                                      parse_mode=ParseMode.MARKDOWN_V2,
+        context.bot.edit_message_text('do you enjoy food shopping?',
                                       reply_markup=InlineKeyboardMarkup(
                                           [[InlineKeyboardButton('yep', callback_data='y'),
                                             InlineKeyboardButton('hate', callback_data='n')]]
@@ -282,8 +313,7 @@ def eighth_que(update: Update, context: CallbackContext):
         return SHOPPING
     elif update.callback_query.data == 'n':
         context.user_data['cooking'] = 'no'
-        context.bot.edit_message_text('*would you like to start loving it?*😉',
-                                      parse_mode=ParseMode.MARKDOWN_V2,
+        context.bot.edit_message_text('would you like to start loving it?😉',
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
                                                                                                callback_data='y'),
                                                                           InlineKeyboardButton('nope',
@@ -310,8 +340,7 @@ def would_you(update: Update, context: CallbackContext):
                                      timeout=1)
         time.sleep(2)
 
-    context.bot.edit_message_text('*do you enjoy food shopping?*',
-                                  parse_mode=ParseMode.MARKDOWN_V2,
+    context.bot.edit_message_text('do you enjoy food shopping?',
                                   reply_markup=InlineKeyboardMarkup(
                                       [[InlineKeyboardButton('yep', callback_data='y'),
                                         InlineKeyboardButton('hate', callback_data='n')]]
@@ -330,17 +359,15 @@ def ninth_que(update: Update, context: CallbackContext):
     
     if update.callback_query.data == 'y':
         context.user_data['shopping'] = 'I do'
-        context.bot.edit_message_text(text='*where do you usually buy stuff*: markets, supermarkets etc\\.?',
-                                      parse_mode=ParseMode.MARKDOWN_V2,
+        context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
         return WHERE
     elif update.callback_query.data == 'n':
         context.user_data['shopping'] = "I don't"
-    
-    context.bot.edit_message_text(text='*top\\-4 your last or most common orders in restaurant/wolt*',
-                                  parse_mode=ParseMode.MARKDOWN_V2,
+
+    context.bot.edit_message_text(text='top-4 your last or most common orders in restaurant/wolt',
                                   reply_markup=None,
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id)
@@ -351,9 +378,8 @@ def ninth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> if he likes asks where user buys and goes to top-4
 def where_shop(update: Update, context: CallbackContext):
     context.user_data['where'] = update.message.text
-    
-    update.message.reply_text(text='*top\\-4 your last or most common orders in restaurant/wolt*',
-                              parse_mode=ParseMode.MARKDOWN_V2,
+
+    update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
                               reply_markup=None)
     update_answers(update, context)
     return TOP
@@ -362,9 +388,8 @@ def where_shop(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
 def tenth_que(update: Update, context: CallbackContext):
     context.user_data['top-4'] = update.message.text
-    update.message.reply_text(text='*do you have your favorite/traditional meals?*'
-                                   '\\(ex\\. if you’re eating same kind of breakfast everyday\\)',
-                              parse_mode=ParseMode.MARKDOWN_V2)
+    update.message.reply_text(text='do you have your favorite/traditional meals?'
+                                   '(ex. if you’re eating same kind of breakfast everyday)')
     update_answers(update, context)
     return FAV
 
@@ -374,8 +399,7 @@ def eleventh_que(update: Update, context: CallbackContext):
     context.user_data['fav'] = update.message.text
     
     update.message.reply_text(
-        text="budget\\. *how much money you spend or want to spend for food per one week?*",
-        parse_mode=ParseMode.MARKDOWN_V2)
+        text="budget. how much money you spend or want to spend for food per one week?")
     update_answers(update, context)
     return BUDGET
 
@@ -398,10 +422,9 @@ def twelfth_que(update: Update, context: CallbackContext):
     for i in pains_dict.keys():
         pains.append([InlineKeyboardButton(pains_dict[i], callback_data=i)])
     pains.append([InlineKeyboardButton("send all these pains as msg", callback_data='msg')])
-    
-    update.message.reply_text(text="*if there’s any pain about food you want to solve?*",
-                              reply_markup=InlineKeyboardMarkup(pains),
-                              parse_mode=ParseMode.MARKDOWN_V2)
+
+    update.message.reply_text(text="if there’s any pain about food you want to solve?",
+                              reply_markup=InlineKeyboardMarkup(pains))
     update_answers(update, context)
     return PAIN
 
@@ -490,12 +513,19 @@ def last_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'alright':
         context.user_data['in a process'] = False
+    
+        contact_button = [
+            [InlineKeyboardButton('🧡', url='https://instagram.com/alter_______native?igshid=YmMyMTA2M2Y=')]
+        ]
+    
         context.bot.forward_message(message_id=update.effective_message.message_id,
                                     chat_id=632291350,
                                     from_chat_id=update.effective_chat.id)
-        context.bot.edit_message_text('this is it for now 🧡 Lina will write you back ASAP.\n'
-                                      'have a delicious continuation of the day',
+        context.bot.edit_message_text('this is it for now 🧡 Lina will write you back ASAP.'
+                                      'have a delicious continuation of the day\n\n'
+                                      'wait. do you follow ALTER | NATIVE | FOOD on instagram?',
                                       message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(contact_button),
                                       chat_id=update.effective_chat.id)
         update_answers(update, context)
         return cancel(update, context)
@@ -784,7 +814,8 @@ def admin_2(update: Update, context: CallbackContext):
     elif update.callback_query.data == 'answers':
         print(df_answers)
         for i in df_answers['username']:
-            keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+            if i:
+                keyboard.append([InlineKeyboardButton(i, callback_data=i)])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text("pick who's data u wanna see:\nor just click here:\n\n"
                                       "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt"
@@ -833,8 +864,9 @@ def interface(update: Update, context: CallbackContext):
             return HI
     if update.callback_query.data == 'new user':
         reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
-                        [InlineKeyboardButton('contact', callback_data='contact')]]
-        update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | PROJECT. wanna buy a menu?',
+                        [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
+                        [InlineKeyboardButton('want to read about the project', callback_data='read about')]]
+        update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | FOOD\nwanna buy a menu?',
                                             reply_markup=InlineKeyboardMarkup(reply_markup))
         return WELCOME
 
