@@ -748,11 +748,11 @@ def admin_2(update: Update, context: CallbackContext):
     global df_answers
     
     if update.callback_query.data == 'send message':
-        for i in users.keys():
-            keyboard.append([InlineKeyboardButton(f'{users[i]}', callback_data=i)])
+        for i in df_users['username']:
+            keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
         keyboard.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
         keyboard.append([InlineKeyboardButton(f'back', callback_data='back')])
-
+    
         context.bot.edit_message_text(
             text='choose user who u want to send message:\n'
                  '!note that u can send message only to user who pressed start',
@@ -772,9 +772,9 @@ def admin_2(update: Update, context: CallbackContext):
     #     return PICKED
 
     elif update.callback_query.data == 'start_pressed':
-        text = f'here is {len(users)} users: \n\n'
-        for i in users:
-            text += '@' + users[i] + ' '
+        text = f'here is {len(df_users)} users: \n\n'
+        for i in df_users['username']:
+            text += '@' + i + ' '
         context.bot.edit_message_text(text=text,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
@@ -1170,20 +1170,23 @@ def send_message(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['admin send message: users_id'], context.bot_data['admin send message: user_name'] = [], []
     text = ''
-
+    print(df_users)
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
-    
-    for i in users.keys():
+
+    for j, i in enumerate(df_users['username']):
         if update.callback_query.data == i:
-            context.bot_data['admin send message: users_id'].append(update.callback_query.data)
-            context.bot_data['admin send message: user_name'].append(users[i])
-            text = f'ok, what message do you want to send to @{users[i]}? \n\nIf it is file than it should be .pdf ' \
-                   f'and you need to send it separately from text message'
+            context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+            context.bot_data['admin send message: user_name'].append(i)
+            print(df_users['id'][j])
+            print(i)
         
+            text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
+                   f'and you need to send it separately from text message'
+    
         elif update.callback_query.data == 'send to all':
-            context.bot_data['admin send message: users_id'].append(i)
-            context.bot_data['admin send message: user_name'].append(users[i])
+            context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+            context.bot_data['admin send message: user_name'].append(i)
             text = f'ok, what message do you want to send to all users?'
 
     context.bot.edit_message_text(text=text,
