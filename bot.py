@@ -774,22 +774,26 @@ def admin(update: Update, context: CallbackContext):
 
 def admin_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    keyboard = []
+    keyboard, buttons_ = [], [[]]
+    k, s = 0, 0
     global df_answers
-    
+
     if update.callback_query.data == 'send message':
         for i in df_users['username']:
-            keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
-        keyboard.append([InlineKeyboardButton(f'send to all', callback_data='send to all')])
-        keyboard.append([InlineKeyboardButton(f'back', callback_data='back')])
-    
-        context.bot.edit_message_text(
-            text='choose user who u want to send message:\n'
-                 '!note that u can send message only to user who pressed start',
-            message_id=update.effective_message.message_id,
-            chat_id=update.effective_chat.id,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+            k += 1
+            if k <= 4:
+                buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+            if k == 4:
+                buttons_.append([])
+                s += 1
+                k = 0
+        buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
+        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
+        text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
+        context.bot.edit_message_text(text,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
         return SEND_MESSAGE
 
     # elif update.callback_query.data == 'picked':
@@ -813,16 +817,31 @@ def admin_2(update: Update, context: CallbackContext):
 
     elif update.callback_query.data == 'answers':
         print(df_answers)
-        for i in df_answers['username']:
-            if i:
-                keyboard.append([InlineKeyboardButton(i, callback_data=i)])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        context.bot.edit_message_text("pick who's data u wanna see:\nor just click here:\n\n"
-                                      "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt"
-                                      "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0",
+        txt = "pick who's data u wanna see:\nor just click here:\n\n" \
+              "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
+              "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
+        for j, i in enumerate(df_answers['username']):
+            if j <= 80:
+                k += 1
+                if i and k <= 4:
+                    buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+                if k == 4:
+                    s += 1
+                    k = 0
+                    buttons_.append([])
+            else:
+                buttons_.append([InlineKeyboardButton('>>', callback_data='>>')])
+                break
+    
+        if len(buttons_) >= 68:
+            txt = 'there is more then 100 users, i should thought about how to display more then 100 but ' \
+                  'i didnt so text me hehe but now use link only plz ' \
+                  'https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt-ON1T2ZR_O3sosfyzzlbI/edit#gid=0'
+        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
+        context.bot.edit_message_text(txt,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(keyboard))
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
         return DATA
 
     elif update.callback_query.data == 'data':
@@ -846,6 +865,49 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return INTERFACE
+
+
+def pages(update: Update, context: CallbackContext):
+    s, k, buttons_ = 0, 0, [[]]
+    txt = '1'
+    if update.callback_query.data == 'back':
+        return back_to_admin(update, context)
+    if update.callback_query.data == '>>':
+        for j, i in enumerate(df_answers['username']):
+            if j <= 80:
+                k += 1
+                if i and k <= 4:
+                    buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+                if k == 4:
+                    s += 1
+                    k = 0
+                    buttons_.append([])
+            else:
+                buttons_.append([InlineKeyboardButton('>>', callback_data='>>')])
+                break
+        
+        if len(buttons_) >= 68:
+            txt = 'there is more then 100 users, i should thought about how to display more then 100 but ' \
+                  'i didnt so text me hehe but now use link only plz ' \
+                  'https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt-ON1T2ZR_O3sosfyzzlbI/edit#gid=0'
+        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
+        context.bot.edit_message_text(txt,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
+        return DATA
+
+
+def user_data(update: Update, context: CallbackContext):
+    global df_answers
+    update.callback_query.answer()
+    txt = ''
+    for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
+        txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
+    context.bot.edit_message_text(txt,
+                                  message_id=update.effective_message.message_id,
+                                  chat_id=update.effective_chat.id,
+                                  reply_markup=None)
 
 
 def interface(update: Update, context: CallbackContext):
@@ -1181,20 +1243,6 @@ def back_to_admin(update: Update, context: CallbackContext):
 #                                   message_id=update.effective_message.message_id,
 #                                   reply_markup=None)
 #     return cancel(update, context)
-
-
-def user_data(update: Update, context: CallbackContext):
-    global df_answers
-    update.callback_query.answer()
-    if update.callback_query.data == 'back':
-        return back_to_admin(update, context)
-    txt = ''
-    for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
-        txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
-    context.bot.edit_message_text(txt,
-                                  message_id=update.effective_message.message_id,
-                                  chat_id=update.effective_chat.id,
-                                  reply_markup=None)
 
 
 def send_message(update: Update, context: CallbackContext):
