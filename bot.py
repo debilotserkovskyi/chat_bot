@@ -841,7 +841,7 @@ def admin_2(update: Update, context: CallbackContext):
                 update.callback_query.data == 'back':
             txt = "pick who's data u wanna see:\nor just click here:\n\n" \
                   "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
-                  "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
+                  "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0\n\n"
             if update.callback_query.data == 'answers' or update.callback_query.data == 'next':
                 for j, i in enumerate(df_answers['username']):
                     if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
@@ -1032,7 +1032,7 @@ def user_data(update: Update, context: CallbackContext):
     buttons_, k, s = [[]], 0, 0
     txt = "pick who's data u wanna see:\nor just click here:\n\n" \
           "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
-          "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
+          "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0\n\n"
     
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
