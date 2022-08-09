@@ -38,10 +38,10 @@ sh = service_account.open('alter data')
 wk_answers = sh.worksheet('2022')
 wk_user = sh.worksheet('users')
 
-
-global data, user, id_, df_users
+global data, user, id_
 
 df_answers = pd.DataFrame(wk_answers.get_all_records())
+df_users = pd.DataFrame(wk_user.get_all_records())
 
 
 def update_answers(update: Update, context: CallbackContext):
@@ -78,7 +78,6 @@ def start(update: Update, context: CallbackContext):
     user = update.effective_message.from_user.username
     id_ = update.message.from_user.id
     update_answers(update, context)
-    df_users = pd.DataFrame(wk_user.get_all_records())
     context.user_data['id'] = id_
     
     with open('data.pkl', 'rb') as f:
@@ -182,7 +181,7 @@ you’ve got for you.'''
         context.bot.edit_message_text(text=txt,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
-    
+
         return cancel(update, context)
     
     return YES
@@ -224,7 +223,7 @@ def third_que(update: Update, context: CallbackContext):
     if match(context.chat_data['pattern'], update.message.text):
         context.user_data['email'] = update.message.text
         loc = [[KeyboardButton('send location', request_location=True, )]]
-    
+
         context.bot.send_message(
             text='ok\\!\n\n*country and city you currently reside?*\n\n\\(u may use button location\\)',
             chat_id=update.effective_chat.id,
@@ -513,11 +512,11 @@ def last_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
     if update.callback_query.data == 'alright':
         context.user_data['in a process'] = False
-    
+
         contact_button = [
             [InlineKeyboardButton('🧡', url='https://instagram.com/alter_______native?igshid=YmMyMTA2M2Y=')]
         ]
-    
+
         context.bot.forward_message(message_id=update.effective_message.message_id,
                                     chat_id=632291350,
                                     from_chat_id=update.effective_chat.id)
@@ -775,28 +774,105 @@ def admin(update: Update, context: CallbackContext):
 
 def admin_2(update: Update, context: CallbackContext):
     update.callback_query.answer()
-    keyboard, buttons_ = [], [[]]
-    k, s = 0, 0
+    keyboard, buttons_, txt = [], [[]], ''
+    k, s, text = 0, 0, ''
     global df_answers
-
-    if update.callback_query.data == 'send message':
-        for i in df_users['username']:
-            k += 1
-            if k <= 4:
-                buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
-            if k == 4:
-                buttons_.append([])
-                s += 1
-                k = 0
-        buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
-        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
-        text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
-        context.bot.edit_message_text(text,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(buttons_))
-        return SEND_MESSAGE
-
+    print(1.1)
+    if update.callback_query.data == 'back' or update.callback_query.data == 'back_m':
+        return back_to_admin(update, context)
+    
+    for j, i in enumerate(df_users['username']):
+        if update.callback_query.data == i or update.callback_query.data == 'send to all' and \
+                context.bot_data['is message']:
+            if update.callback_query.data == i:
+                context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+                context.bot_data['admin send message: user_name'].append(i)
+                print(df_users['id'][j])
+                print(i)
+                
+                text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
+                       f'and you need to send it separately from text message'
+                print(1.6)
+            elif update.callback_query.data == 'send to all':
+                context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+                context.bot_data['admin send message: user_name'].append(i)
+                text = f'ok, what message do you want to send to all users?'
+            
+            context.bot.edit_message_text(text=text,
+                                          message_id=update.effective_message.message_id,
+                                          chat_id=update.effective_chat.id,
+                                          reply_markup=None)
+            print(1.6)
+            return SEND_MESSAGE_TXT
+        elif update.callback_query.data == 'send message' or \
+                update.callback_query.data == 'next_m':
+            
+            if update.callback_query.data == 'next_m' or update.callback_query.data == 'send message':
+                print(1.3)
+                for j, i in enumerate(df_users['username']):
+                    if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
+                        continue
+                    elif j < context.bot_data['pages'] + 80:
+                        k += 1
+                        if k <= 4:
+                            buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+                        if k == 4:
+                            buttons_.append([])
+                            s += 1
+                            k = 0
+                    if j == context.bot_data['pages'] + 80:
+                        buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
+                        break
+                buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
+                buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
+                text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
+                context.bot.edit_message_text(text,
+                                              chat_id=update.effective_chat.id,
+                                              message_id=update.effective_message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(buttons_))
+                context.bot_data['pages'] += 80
+                print(1.4)
+                return SEND_MESSAGE
+    
+    for k, j in enumerate(df_answers['username']):
+        
+        if update.callback_query.data == j and context.bot_data['is answers']:
+            for s, m in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
+                txt += str(df_answers.columns.values[s]) + ':\n' + str(m) + '\n\n'
+            context.bot.edit_message_text(txt,
+                                          message_id=update.effective_message.message_id,
+                                          chat_id=update.effective_chat.id,
+                                          reply_markup=None)
+            return cancel(update, context)
+        elif update.callback_query.data == 'answers' or update.callback_query.data == 'next' or \
+                update.callback_query.data == 'back':
+            print(df_answers)
+            txt = "pick who's data u wanna see:\nor just click here:\n\n" \
+                  "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
+                  "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
+            if update.callback_query.data == 'answers' or update.callback_query.data == 'next':
+                for j, i in enumerate(df_answers['username']):
+                    if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
+                        continue
+                    elif j < context.bot_data['pages'] + 80:
+                        k += 1
+                        if i and k <= 4:
+                            buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+                        if k == 4:
+                            s += 1
+                            k = 0
+                            buttons_.append([])
+                    if j == context.bot_data['pages'] + 80:
+                        buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
+                        break
+                buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
+                context.bot.edit_message_text(txt,
+                                              chat_id=update.effective_chat.id,
+                                              message_id=update.effective_message.message_id,
+                                              reply_markup=InlineKeyboardMarkup(buttons_))
+                context.bot_data['pages'] += 80
+                return DATA
+    
     # elif update.callback_query.data == 'picked':
     #     for i in context.chat_data['picked dish']:
     #         keyboard.append([InlineKeyboardButton(f'{i}', callback_data=i)])
@@ -805,8 +881,8 @@ def admin_2(update: Update, context: CallbackContext):
     #                                   message_id=update.effective_message.message_id,
     #                                   reply_markup=InlineKeyboardMarkup(keyboard))
     #     return PICKED
-
-    elif update.callback_query.data == 'start_pressed':
+    
+    if update.callback_query.data == 'start_pressed':
         text = f'here is {len(df_users)} users: \n\n'
         for i in df_users['username']:
             text += '@' + i + ' '
@@ -815,37 +891,7 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
         return cancel(update, context)
-
-    elif update.callback_query.data == 'answers' or update.callback_query.data == 'next' or \
-            update.callback_query.data == 'back':
-        if update.callback_query.data == 'back':
-            return back_to_admin(update, context)
-        print(df_answers)
-        txt = "pick who's data u wanna see:\nor just click here:\n\n" \
-              "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
-              "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
-        for j, i in enumerate(df_answers['username']):
-            if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
-                continue
-            elif j < context.bot_data['pages'] + 80:
-                k += 1
-                if i and k <= 4:
-                    buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
-                if k == 4:
-                    s += 1
-                    k = 0
-                    buttons_.append([])
-            if j == context.bot_data['pages'] + 80:
-                buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
-                break
-        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
-        context.bot.edit_message_text(txt,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(buttons_))
-        context.bot_data['pages'] += 80
-        return DATA
-
+    
     elif update.callback_query.data == 'data':
         keyboard.append([InlineKeyboardButton('change existing', callback_data='change')])
         keyboard.append([InlineKeyboardButton('del or change username', callback_data='del')])
@@ -856,7 +902,7 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return DATA_CHANGE
-
+    
     elif update.callback_query.data == 'interface':
         for i in data:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
@@ -867,23 +913,139 @@ def admin_2(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
         return INTERFACE
-    txt = ''
-    for k, j in enumerate(df_answers['username']):
-        if update.callback_query.data == j:
-            for s, m in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
-                txt += str(df_answers.columns.values[s]) + ':\n' + str(m) + '\n\n'
-            context.bot.edit_message_text(txt,
-                                          message_id=update.effective_message.message_id,
-                                          chat_id=update.effective_chat.id,
-                                          reply_markup=None)
-            return cancel(update, context)
+
+
+def send_message(update: Update, context: CallbackContext):
+    global df_users
+    context.bot_data['is message'] = True
+    update.callback_query.answer()
+    context.bot_data['admin send message: users_id'], context.bot_data['admin send message: user_name'] = [], []
+    text, buttons_, s, k = '', [[]], 0, 0
+    print(df_users)
+    if update.callback_query.data == 'back_m':
+        return back_to_admin(update, context)
+    
+    elif update.callback_query.data == 'next':
+        print(1)
+        for j, i in enumerate(df_users['username']):
+            if j < context.bot_data['pages']:
+                continue
+            elif j < context.bot_data['pages'] + 80:
+                k += 1
+                if k <= 4:
+                    buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
+                if k == 4:
+                    buttons_.append([])
+                    s += 1
+                    k = 0
+            if j == context.bot_data['pages'] + 80:
+                buttons_.append([InlineKeyboardButton('>>', callback_data='next_m')])
+                break
+        buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
+        buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
+        text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
+        context.bot.edit_message_text(text,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(buttons_))
+        context.bot_data['pages'] += 80
+        print(2)
+        return ADMIN
+    else:
+        for j, i in enumerate(df_users['username']):
+            if update.callback_query.data == i:
+                context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+                context.bot_data['admin send message: user_name'].append(i)
+                print(df_users['id'][j])
+                print(i)
+                
+                text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
+                       f'and you need to send it separately from text message'
+            
+            elif update.callback_query.data == 'send to all':
+                context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
+                context.bot_data['admin send message: user_name'].append(i)
+                text = f'ok, what message do you want to send to all users?'
+        
+        context.bot.edit_message_text(text=text,
+                                      message_id=update.effective_message.message_id,
+                                      chat_id=update.effective_chat.id,
+                                      reply_markup=None)
+        return SEND_MESSAGE_TXT
+
+
+def second_que_txt(update: Update, context: CallbackContext):
+    if update.message.text:
+        message = context.bot_data['admin send message: message'] = update.message.text
+        update.message.reply_text(
+            text=f"so, message:\n\n{message}\n\nto user(s): @{context.bot_data['admin send message: user_name']}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
+                                                InlineKeyboardButton('change', callback_data='change')]]))
+        return SENDING
+    elif update.message.document:
+        context.bot.get_file(update.message.document).download()
+        context.bot_data['file'] = update.message.document['file_name']
+        with open(f"pdf/{context.bot_data['file']}.pdf", 'wb') as f:
+            context.bot.get_file(update.message.document).download(out=f)
+            update.message.reply_text(
+                text=f"I kept it. wanna send?",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
+                                                    InlineKeyboardButton('cancel', callback_data='cancel')]]))
+        return SEND_DOCUMENT
+    else:
+        update.message.reply_text("i dont know this file type..... I BROKE PRES /start again")
+        return cancel(update, context)
+
+
+def sending_document(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'send':
+        document = open(f"pdf/{context.bot_data['file']}.pdf", 'rb')
+        for i in context.bot_data['admin send message: users_id']:
+            context.bot.send_document(
+                document=document,
+                chat_id=i)
+        context.bot.edit_message_text('done!',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return cancel(update, context)
+    elif update.callback_query.data == 'cancel':
+        context.bot.edit_message_text('canceled, press /start again', chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id,
+                                      reply_markup=None)
+        return cancel(update, context)
+
+
+def sending(update: Update, context: CallbackContext):
+    update.callback_query.answer()
+    if update.callback_query.data == 'send':
+        for i in context.bot_data['admin send message: users_id']:
+            context.bot.send_message(
+                text=context.bot_data['admin send message: message'],
+                chat_id=i
+            )
+        context.bot.edit_message_text('done!',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return cancel(update, context)
+    elif update.callback_query.data == 'change':
+        context.bot.edit_message_text('type a new one:',
+                                      reply_markup=None,
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+        return SEND_MESSAGE_TXT
 
 
 def user_data(update: Update, context: CallbackContext):
     global df_answers
+    context.bot_data['is answers'] = True
     update.callback_query.answer()
     buttons_, k, s = [[]], 0, 0
-    txt = '1 \n'
+    txt = "pick who's data u wanna see:\nor just click here:\n\n" \
+          "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
+          "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0"
     
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
@@ -910,13 +1072,14 @@ def user_data(update: Update, context: CallbackContext):
                                       reply_markup=InlineKeyboardMarkup(buttons_))
         context.bot_data['pages'] += 80
         return ADMIN
-    for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
-        txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
-    context.bot.edit_message_text(txt,
-                                  message_id=update.effective_message.message_id,
-                                  chat_id=update.effective_chat.id,
-                                  reply_markup=None)
-    return cancel(update, context)
+    else:
+        for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
+            txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
+        context.bot.edit_message_text(txt,
+                                      message_id=update.effective_message.message_id,
+                                      chat_id=update.effective_chat.id,
+                                      reply_markup=None)
+        return cancel(update, context)
 
 
 def interface(update: Update, context: CallbackContext):
@@ -1227,7 +1390,7 @@ def save_update(update: Update, context: CallbackContext):
 def back_to_admin(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['pages'] = 0
-    if update.callback_query.data == 'back':
+    if update.callback_query.data == 'back' or update.callback_query.data == 'back_m':
         admins_button = []
         for i in context.bot_data['admin_buttons'].keys():
             admins_button.append([InlineKeyboardButton(context.bot_data['admin_buttons'][i], callback_data=i)])
@@ -1253,101 +1416,6 @@ def back_to_admin(update: Update, context: CallbackContext):
 #                                   message_id=update.effective_message.message_id,
 #                                   reply_markup=None)
 #     return cancel(update, context)
-
-
-def send_message(update: Update, context: CallbackContext):
-    global df_users
-    update.callback_query.answer()
-    context.bot_data['admin send message: users_id'], context.bot_data['admin send message: user_name'] = [], []
-    text = ''
-    print(df_users)
-    if update.callback_query.data == 'back':
-        return back_to_admin(update, context)
-
-    for j, i in enumerate(df_users['username']):
-        if update.callback_query.data == i:
-            context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
-            context.bot_data['admin send message: user_name'].append(i)
-            print(df_users['id'][j])
-            print(i)
-        
-            text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
-                   f'and you need to send it separately from text message'
-    
-        elif update.callback_query.data == 'send to all':
-            context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
-            context.bot_data['admin send message: user_name'].append(i)
-            text = f'ok, what message do you want to send to all users?'
-
-    context.bot.edit_message_text(text=text,
-                                  message_id=update.effective_message.message_id,
-                                  chat_id=update.effective_chat.id,
-                                  reply_markup=None)
-    return SEND_MESSAGE_TXT
-
-
-def second_que_txt(update: Update, context: CallbackContext):
-    if update.message.text:
-        message = context.bot_data['admin send message: message'] = update.message.text
-        update.message.reply_text(
-            text=f"so, message:\n\n{message}\n\nto user(s): @{context.bot_data['admin send message: user_name']}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
-                                                InlineKeyboardButton('change', callback_data='change')]]))
-        return SENDING
-    elif update.message.document:
-        context.bot.get_file(update.message.document).download()
-        context.bot_data['file'] = update.message.document['file_name']
-        with open(f"pdf/{context.bot_data['file']}.pdf", 'wb') as f:
-            context.bot.get_file(update.message.document).download(out=f)
-            update.message.reply_text(
-                text=f"I kept it. wanna send?",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
-                                                    InlineKeyboardButton('cancel', callback_data='cancel')]]))
-        return SEND_DOCUMENT
-    else:
-        update.message.reply_text("i dont know this file type..... I BROKE PRES /start again")
-        return cancel(update, context)
-
-
-def sending_document(update: Update, context: CallbackContext):
-    update.callback_query.answer()
-    if update.callback_query.data == 'send':
-        document = open(f"pdf/{context.bot_data['file']}.pdf", 'rb')
-        for i in context.bot_data['admin send message: users_id']:
-            context.bot.send_document(
-                document=document,
-                chat_id=i)
-        context.bot.edit_message_text('done!',
-                                      reply_markup=None,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id)
-        return cancel(update, context)
-    elif update.callback_query.data == 'cancel':
-        context.bot.edit_message_text('canceled, press /start again', chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id,
-                                      reply_markup=None)
-        return cancel(update, context)
-
-
-def sending(update: Update, context: CallbackContext):
-    update.callback_query.answer()
-    if update.callback_query.data == 'send':
-        for i in context.bot_data['admin send message: users_id']:
-            context.bot.send_message(
-                text=context.bot_data['admin send message: message'],
-                chat_id=i
-            )
-        context.bot.edit_message_text('done!',
-                                      reply_markup=None,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id)
-        return cancel(update, context)
-    elif update.callback_query.data == 'change':
-        context.bot.edit_message_text('type a new one:',
-                                      reply_markup=None,
-                                      chat_id=update.effective_chat.id,
-                                      message_id=update.effective_message.message_id)
-        return SEND_MESSAGE_TXT
 
 
 # --------------------------------------------------------------------
