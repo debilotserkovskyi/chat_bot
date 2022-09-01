@@ -77,15 +77,16 @@ def start(update: Update, context: CallbackContext):
     global data, user, id_, df_answers, df_users
     user = update.effective_message.from_user.username
     id_ = update.message.from_user.id
-    update_answers(update, context)
     context.user_data['id'] = id_
-    
+    context.user_data['username'] = user
+    update_answers(update, context)
+
     with open('data.pkl', 'rb') as f:
         try:
             data = pickle.load(f)
         except:
             data = {}
-    
+
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
     elif id_ not in df_users['id'].unique():
