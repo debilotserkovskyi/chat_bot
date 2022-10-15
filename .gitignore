@@ -17,6 +17,7 @@ var/
 .installed.cfg
 *.egg
 bot.0.py
+alter-data-96722a9a7e3b.json
 
 # Serverless directories
 .serverless
