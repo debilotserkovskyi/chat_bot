@@ -34,7 +34,7 @@ DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHA
 CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
 
 # reading google sheet
-service_account = gspread.service_account(filename='alter-data-d9d2ce186348.json')
+service_account = gspread.service_account(filename='alter-data-96722a9a7e3b.json')
 
 sh = service_account.open('alter data')
 wk_answers = sh.worksheet('2022')
@@ -50,7 +50,7 @@ def update_answers(update: Update, context: CallbackContext):
     """saving users data to gs"""
     global df_answers
     print(datetime.datetime.now())
-    # print(df_answers)
+    print(df_answers)
     try:
         if context.user_data['id'] not in df_answers['id'].unique():
             df_answers = pd.concat([pd.DataFrame({'id': context.user_data['id']}, index=[0]), df_answers],
@@ -70,6 +70,7 @@ def update_answers(update: Update, context: CallbackContext):
             continue
         else:
             df_answers.loc[context.user_data['id'], i] = context.user_data[i]
+    print(datetime.datetime.now())
     
     # df_answers.loc[id_, 'username'] = user
     # print(context.user_data)
@@ -384,8 +385,9 @@ def where_shop(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>>>>>>>>>> stores answer about top4 and goes to fav
 def tenth_que(update: Update, context: CallbackContext):
     context.user_data['top-4'] = update.message.text
-    update.message.reply_text(text='do you have your favorite/traditional meals?'
-                                   '(ex. if you’re eating same kind of breakfast everyday)')
+    update.message.reply_text(text='*do you have your favorite/traditional meals?*'
+                                   '\\(ex\\. if you’re eating same kind of breakfast everyday\\)',
+                              parse_mode=ParseMode.MARKDOWN_V2)
     update_answers(update, context)
     return FAV
 
@@ -742,9 +744,11 @@ def send_dish(update: Update, context: CallbackContext):
     return cancel(update, context)
 
 
-# --------------------------------------------------------------------
+# >>>>>>>>>>>>>>>>>>> ADMIN PANEL <<<<<<<<<<<<<<<<<<<<<<<<
 def admin(update: Update, context: CallbackContext):
-    context.bot_data['pages'] = 0
+    """initial 'page' with started commands"""
+    context.bot_data['pages'] = 0  # counting pages if there are more than 80 users
+    admins_button = []
     context.bot_data['admin_phrases'] = ["donat' na ZSU :)", "sheeeesh", 'tak sho', 'sho tam', 'yak spravu?',
                                          "skrt skrt", 'Poroshenko Petro Oleksiyovuch = PPO', 'YU-SHE-NKO!',
                                          'rukola- girka ta ne smachna', 'red bull nadaye krula', 'hto ya?',
@@ -754,14 +758,14 @@ def admin(update: Update, context: CallbackContext):
                                          'rve za postup, shchastya y volyu,- vin zhyve, vin shche ne vmer. '
                                          'ni popivsʹkiyi tortury, ni tyuremni tsarsʹki mury, '
                                          'ani viysʹka mushtrovani, ni harmaty lashtovani, ni shpionsʹke remeslo '
-                                         'v hrib yoho shche ne zvelo.']
+                                         'v hrib yoho shche ne zvelo.', 'a negroni...sbagliato...with prosecco init',
+                                         '15 zhovtnya 64700 mertvoi rusni', 'omae wa mou shindeiru', 'nani????????', ]
     context.bot_data['admin_buttons'] = {'send message': 'send message to a user/to all users',
                                          'answers': 'see users answers for query',
                                          'data': 'change or add recipy data or delete user data',
                                          'start_pressed': 'see who pressed /start',
                                          # 'picked': 'see which dishes are picked',
                                          'interface': 'see how interface looks for a user'}
-    admins_button = []
     for i in context.bot_data['admin_buttons'].keys():
         admins_button.append([InlineKeyboardButton(context.bot_data['admin_buttons'][i], callback_data=i)])
     
@@ -770,6 +774,7 @@ def admin(update: Update, context: CallbackContext):
 
 
 def admin_2(update: Update, context: CallbackContext):
+    """first callback"""
     update.callback_query.answer()
     keyboard, buttons_, txt = [], [[]], ''
     k, s, text = 0, 0, ''
@@ -778,12 +783,13 @@ def admin_2(update: Update, context: CallbackContext):
         return back_to_admin(update, context)
     
     for j, i in enumerate(df_users['username']):
+        print('done')
         if update.callback_query.data == i or update.callback_query.data == 'send to all' and \
-                context.bot_data['is message']:
-            if update.callback_query.data == i:
+                context.bot_data['is message'] and len(i) > 1:
+            if update.callback_query.data == i and len(i) > 1:
                 context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
                 context.bot_data['admin send message: user_name'].append(i)
-                
+            
                 text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
                        f'and you need to send it separately from text message'
             elif update.callback_query.data == 'send to all':
@@ -805,7 +811,7 @@ def admin_2(update: Update, context: CallbackContext):
                         continue
                     elif j < context.bot_data['pages'] + 80:
                         k += 1
-                        if k <= 4:
+                        if k <= 4 and len(i) != 0:
                             buttons_[s].append(InlineKeyboardButton(i, callback_data=i))
                         if k == 4:
                             buttons_.append([])
@@ -816,7 +822,8 @@ def admin_2(update: Update, context: CallbackContext):
                         break
                 buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
                 buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
-                text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
+                text = 'choose user who u want to send message:\n' \
+                       '!note that u can send message only to user who pressed start'
                 context.bot.edit_message_text(text,
                                               chat_id=update.effective_chat.id,
                                               message_id=update.effective_message.message_id,
@@ -828,10 +835,11 @@ def admin_2(update: Update, context: CallbackContext):
         
         if update.callback_query.data == j and context.bot_data['is answers']:
             for s, m in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
-                txt += str(df_answers.columns.values[s]) + ':\n' + str(m) + '\n\n'
+                txt += str(df_answers.columns.values[s]) + ':' + '*' + str(m) + '*' + '\n\n'
             context.bot.edit_message_text(txt,
                                           message_id=update.effective_message.message_id,
                                           chat_id=update.effective_chat.id,
+                                          parse_mode=ParseMode.MARKDOWN,
                                           reply_markup=None)
             return cancel(update, context)
         elif update.callback_query.data == 'answers' or update.callback_query.data == 'next' or \
@@ -1057,8 +1065,9 @@ def user_data(update: Update, context: CallbackContext):
         context.bot_data['pages'] += 80
         return ADMIN
     else:
+        txt = ''
         for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
-            txt += str(df_answers.columns.values[k]) + ':\n' + str(j) + '\n\n'
+            txt += str(df_answers.columns.values[k]) + ': ' + str(j) + '\n\n'
         context.bot.edit_message_text(txt,
                                       message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id,
