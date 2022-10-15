@@ -17,12 +17,13 @@ from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
 
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-API_GEO = os.environ.get('geo_api')
+# tokens tg and geo service
+TELEGRAM_TOKEN, API_GEO = os.environ.get('TELEGRAM_TOKEN'), os.environ.get('geo_api')
 
+# logs
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
+# vars that we need for conversation handler
 WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
 WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = range(10, 19)
 
@@ -32,6 +33,7 @@ ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_U
 DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
 CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
 
+# reading google sheet
 service_account = gspread.service_account(filename='alter-data-d9d2ce186348.json')
 
 sh = service_account.open('alter data')
@@ -45,6 +47,7 @@ df_users = pd.DataFrame(wk_user.get_all_records())
 
 
 def update_answers(update: Update, context: CallbackContext):
+    """saving users data to gs"""
     global df_answers
     print(datetime.datetime.now())
     # print(df_answers)
@@ -54,20 +57,20 @@ def update_answers(update: Update, context: CallbackContext):
                                    ignore_index=True)
     except:
         print('first')
-
+    
     print(datetime.datetime.now())
     try:
         df_answers = df_answers.set_index('id')
     except:
         print('suka')
     print(datetime.datetime.now())
-
+    
     for i in context.user_data:
         if i == 'id':
             continue
         else:
             df_answers.loc[context.user_data['id'], i] = context.user_data[i]
-
+    
     # df_answers.loc[id_, 'username'] = user
     # print(context.user_data)
     # print(df_answers)
@@ -95,19 +98,12 @@ def start(update: Update, context: CallbackContext):
     if user not in data.keys():
         
         def saving():
-            threading.Timer(60.0, saving).start()
+            threading.Timer((60.0 * 5), saving).start()
             print(datetime.datetime.now())
             gdf.set_with_dataframe(wk_answers, df_answers.reset_index())
             print(datetime.datetime.now())
             gdf.set_with_dataframe(wk_user, df_users)
             print('done')
-            # try:
-            #     save[context.user_data['tag username']] = \
-            #         context.user_data[context.user_data['id']['tag username']]
-            #     with open('users_data.pkl', 'wb') as u:
-            #         pickle.dump(save, u)
-            # except:
-            #     print(save)
 
         saving()
         return wanna_buy(update, context)
