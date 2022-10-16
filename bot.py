@@ -12,7 +12,6 @@ from re import match
 import gspread
 import gspread_dataframe as gdf
 import pandas as pd
-import telegram
 from opencage.geocoder import OpenCageGeocode
 from telegram import *
 from telegram.ext import *
@@ -21,26 +20,8 @@ from telegram.ext import *
 #                                                   VARIABLES
 # ----------------------------------------------------------------------------------------------------------------------
 
-# tokens tg and geo service
-TELEGRAM_TOKEN, API_GEO = os.environ.get('TELEGRAM_TOKEN'), os.environ.get('geo_api')
-
-# logs
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-# vars we need for conversation handler
-WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
-WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = range(10, 19)
-
-HI, CATEGORY, DISH = range(20, 23)
-
-ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
-DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
-CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
-
 # reading google sheet json
 service_account = gspread.service_account(filename='alter-data-96722a9a7e3b.json')
-
 sh = service_account.open('alter data')  # open sheet
 wk_answers = sh.worksheet('2022')  # sheet with user's answers
 wk_user = sh.worksheet('users')  # sheet with usernames and id
@@ -51,6 +32,24 @@ global data, user, id_
 df_answers = pd.DataFrame(wk_answers.get_all_records())
 df_users = pd.DataFrame(wk_user.get_all_records())
 
+# tokens tg and geo service
+TELEGRAM_TOKEN, API_GEO = os.environ.get('TELEGRAM_TOKEN'), os.environ.get('geo_api')
+
+# logs
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# new user vars
+WELCOME, YES, YALLA, EMAIL, LOCATION, LOC_CHECK, LIKE, COOK, WOULD_LOVE, SHOPPING = range(10)
+WHERE, TOP, FAV, BUDGET, PAIN, ANOTHER_PAIN, CHECKING, CHANGE, CHANGING_NAME = range(10, 19)
+
+# old user vars
+HI, CATEGORY, DISH = range(20, 23)
+
+# admin vars
+ADMIN, SEND_MESSAGE, SEND_MESSAGE_TXT, SENDING, DATA, PICKED, DATA_CHANGE, NEW_USER, DATA_CHANGE_2 = range(30, 39)
+DATA_CHANGE_3, WHAT_CHANGE, SAVE_UPDATE, INTERFACE, NUMBER, CHANGE_USER, DEL_CHANGE, DEL_CHANGE2 = range(40, 48)
+CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 55)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                      /START
@@ -59,7 +58,7 @@ df_users = pd.DataFrame(wk_user.get_all_records())
 
 def start(update: Update, context: CallbackContext):
     global data, user, id_, df_answers, df_users
-    user = update.effective_message.from_user.username
+    user = update.effective_message.from_user.username  # username
     id_ = update.message.from_user.id
     context.user_data['id'] = id_
     context.user_data['username'] = user
@@ -99,11 +98,15 @@ def start(update: Update, context: CallbackContext):
 
 # >>>>>>>>>>>>>>> greetings after /start pressed <<<<<<<<<<<<<<<
 def wanna_buy(update: Update, context: CallbackContext):
-    reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
-                    [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
-                    [InlineKeyboardButton('want to read about the project', callback_data='read about')]]
+    reply_markup = [
+        [InlineKeyboardButton('YES', callback_data='YES')],
+        [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
+        [InlineKeyboardButton('want to read about the project', callback_data='read about')]
+    ]
+    
     update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | FOOD\nwanna buy a menu?',
                                         reply_markup=InlineKeyboardMarkup(reply_markup))
+    
     return WELCOME
 
 
@@ -111,6 +114,7 @@ def wanna_buy(update: Update, context: CallbackContext):
 def first_que(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+
     # run conv handler (questioner)
     if query.data == 'YES':
         context.bot.edit_message_text(
@@ -119,16 +123,22 @@ def first_que(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id,
             parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yalla', callback_data='yalla')]]))
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yalla', callback_data='yalla')]])
+        )
+
     # send contact links
     elif query.data == 'contact':
         contact_button = [[InlineKeyboardButton('Instagram', url='https://www.instagram.com/yolkinalina/'),
                            InlineKeyboardButton('Telegram', url='https://t.me/linayolkina')]]
+    
         reply_markup_start = InlineKeyboardMarkup(contact_button)
+    
         context.bot.edit_message_text(text="here:", reply_markup=reply_markup_start,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+    
         return cancel(update, context)
+
     # send information about the project
     elif query.data == 'read about':
         txt = '''
@@ -157,6 +167,7 @@ LEVEL 4
 ALTER | NATIVE | PREMIUM including ALTER | NATIVE | MENU + a FOOD DATE with @linayolkina, where you’re going to
 market, learning how to pick the best stuff and cooking together. Private master-class of cooking based on the menu
 you’ve got for you.'''
+
         context.bot.edit_message_text(text=txt,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
@@ -169,8 +180,10 @@ you’ve got for you.'''
 # >>>>>>>>>>>>>>> if 'YALLA' button pressed send first question - name <<<<<<<<<<<<<<<
 def yalla(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'yalla':
         context.user_data['in a process'] = True
+
         context.bot.edit_message_text(
             text='first, let me get to know you:\\) \n\n*what’s your name and surname?*\n\n\\(type everything in one '
                  'message\\)',
@@ -186,9 +199,11 @@ def yalla(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>> store name and ask email <<<<<<<<<<<<<<<
 def second_que(update: Update, context: CallbackContext):
     context.user_data['name'] = update.message.text
+
     if update.message.text:
         context.bot.send_message(text='e-mail?', chat_id=update.effective_chat.id)
         update_answers(update, context)
+
         return EMAIL
 
 
@@ -208,9 +223,12 @@ def third_que(update: Update, context: CallbackContext):
             reply_markup=ReplyKeyboardMarkup(loc),
             parse_mode=ParseMode.MARKDOWN_V2)
         update_answers(update, context)
+
         return LOCATION
+
     else:
         context.bot.send_message(text="i can't understand this email, try again plz", chat_id=update.effective_chat.id)
+
         return EMAIL
 
 
@@ -223,28 +241,33 @@ def forth_que(update: Update, context: CallbackContext):
                                   'write it down in a single message',
                                   reply_markup=None,
                                   parse_mode=ParseMode.MARKDOWN_V2)
+
         return LIKE
+    
     elif update.message.location:
         geo_coder = OpenCageGeocode(API_GEO)
         results = geo_coder.reverse_geocode(update.message.location.latitude, update.message.location.longitude)
-
         # print(results)
-        context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, "
-                                      f"*right?*",
+        
+        context.bot.send_message(text=f"so, you are in {results[0]['formatted']}, *right?*",
                                  chat_id=update.effective_chat.id,
                                  parse_mode=ParseMode.MARKDOWN_V2,
-                                 reply_markup=InlineKeyboardMarkup(
-                                     [[InlineKeyboardButton('y', callback_data='y')],
-                                      [InlineKeyboardButton('n', callback_data='n')]]))
+                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
+                                                                     InlineKeyboardButton('n', callback_data='n')]])
+                                 )
+        
         context.user_data['location'] = results[0]['formatted']
         update_answers(update, context)
+        
         return LOC_CHECK
 
 
 # >>>>>>>>>>>>>>> if type is .location user check it through geo api and bot ask about allergies <<<<<<<<<<<<<<<
 def loc_check(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'y':
+    
         context.bot.edit_message_text(
             '*do you have allergies or products you don’t like \\(and even hate\\)*?\n\n'
             'write it down in a single message',
@@ -252,12 +275,16 @@ def loc_check(update: Update, context: CallbackContext):
             message_id=update.effective_message.message_id,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=None)
+    
         return LIKE
+
     elif update.callback_query.data == 'n':
+    
         context.bot.edit_message_text('then maybe try to write it manually?',
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
+    
         return LOCATION
 
 
@@ -265,11 +292,12 @@ def loc_check(update: Update, context: CallbackContext):
 def fifth_que(update: Update, context: CallbackContext):
     context.user_data["allergies or products I don't like"] = update.message.text
     update_answers(update, context)
+
     if update.message.text:
-        update.message.reply_text(
-            'do you love to cook?',
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
-                                                InlineKeyboardButton('n', callback_data='n')]]))
+        update.message.reply_text('do you love to cook?',
+                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('y', callback_data='y'),
+                                                                      InlineKeyboardButton('n', callback_data='n')]]))
+    
         return COOK
 
 
@@ -279,25 +307,27 @@ def eighth_que(update: Update, context: CallbackContext):
     
     if update.callback_query.data == 'y':
         context.user_data['cooking'] = 'YES'
+
         context.bot.edit_message_text('do you enjoy food shopping?',
                                       reply_markup=InlineKeyboardMarkup(
                                           [[InlineKeyboardButton('yep', callback_data='y'),
-                                            InlineKeyboardButton('hate', callback_data='n')]]
-                                      ),
+                                            InlineKeyboardButton('hate', callback_data='n')]]),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         update_answers(update, context)
         return SHOPPING
+
     elif update.callback_query.data == 'n':
         context.user_data['cooking'] = 'no'
+
         context.bot.edit_message_text('would you like to start loving it?😉',
-                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('yep',
-                                                                                               callback_data='y'),
-                                                                          InlineKeyboardButton('nope',
-                                                                                               callback_data='n')]]
-                                                                        ),
+                                      reply_markup=InlineKeyboardMarkup(
+                                          [[InlineKeyboardButton('yep', callback_data='y'),
+                                            InlineKeyboardButton('nope', callback_data='n')]]),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         update_answers(update, context)
         return WOULD_LOVE
 
@@ -305,42 +335,46 @@ def eighth_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>> if 'n' react on it and ask about shopping <<<<<<<<<<<<<<<
 def would_you(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'y':
         context.user_data['wanna learn?'] = 'I would like'
+
     elif update.callback_query.data == 'n':
         context.user_data['wanna learn?'] = 'never'
         context.bot.edit_message_text('sad :(',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
-        context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
+        context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING,
                                      timeout=1)
         time.sleep(2)
 
     context.bot.edit_message_text('do you enjoy food shopping?',
                                   reply_markup=InlineKeyboardMarkup(
                                       [[InlineKeyboardButton('yep', callback_data='y'),
-                                        InlineKeyboardButton('hate', callback_data='n')]]
-                                  ),
+                                        InlineKeyboardButton('hate', callback_data='n')]]),
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id)
+
     update_answers(update, context)
     return SHOPPING
 
 
 # >>>>>>>>>>>>>>> store answer and asks about top-4 <<<<<<<<<<<<<<<
 def ninth_que(update: Update, context: CallbackContext):
-    # print(context.user_data)
-    
     update.callback_query.answer()
+    # print(context.user_data)
     
     if update.callback_query.data == 'y':
         context.user_data['shopping'] = 'I do'
+
         context.bot.edit_message_text(text='where do you usually buy stuff: markets, supermarkets etc.?',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         return WHERE
+
     elif update.callback_query.data == 'n':
         context.user_data['shopping'] = "I don't"
 
@@ -348,6 +382,7 @@ def ninth_que(update: Update, context: CallbackContext):
                                   reply_markup=None,
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id)
+    
     update_answers(update, context)
     return TOP
 
@@ -358,6 +393,7 @@ def where_shop(update: Update, context: CallbackContext):
 
     update.message.reply_text(text='top-4 your last or most common orders in restaurant/wolt',
                               reply_markup=None)
+
     update_answers(update, context)
     return TOP
 
@@ -365,9 +401,11 @@ def where_shop(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>> stores top4 answer and ask about fav meals <<<<<<<<<<<<<<<
 def tenth_que(update: Update, context: CallbackContext):
     context.user_data['top-4'] = update.message.text
+
     update.message.reply_text(text='*do you have your favorite/traditional meals?*'
                                    '\\(ex\\. if you’re eating same kind of breakfast everyday\\)',
                               parse_mode=ParseMode.MARKDOWN_V2)
+
     update_answers(update, context)
     return FAV
 
@@ -378,6 +416,7 @@ def eleventh_que(update: Update, context: CallbackContext):
     
     update.message.reply_text(
         text="budget. how much money you spend or want to spend for food per one week?")
+
     update_answers(update, context)
     return BUDGET
 
@@ -385,9 +424,8 @@ def eleventh_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>> store budget and ask pain <<<<<<<<<<<<<<<
 def twelfth_que(update: Update, context: CallbackContext):
     global must_delete, pains_dict
-    
+    pains = []
     context.user_data['budget'] = update.message.text
-    
     pains_dict = {'no_just': 'no, i just want to diversify my daily menu',
                   'changed_diet': 'i changed my diet/became vegan 🌱 and need to find a menu solution for catching '
                                   'all the nutrients',
@@ -396,13 +434,14 @@ def twelfth_que(update: Update, context: CallbackContext):
                   'less_money': 'i want to spent less money on my food',
                   'another': 'another pain',
                   }
-    pains = []
+
     for i in pains_dict.keys():
         pains.append([InlineKeyboardButton(pains_dict[i], callback_data=i)])
-    pains.append([InlineKeyboardButton("send all these pains as msg", callback_data='msg')])
 
+    pains.append([InlineKeyboardButton("send all these pains as msg", callback_data='msg')])
     update.message.reply_text(text="if there’s any pain about food you want to solve?",
                               reply_markup=InlineKeyboardMarkup(pains))
+
     update_answers(update, context)
     return PAIN
 
@@ -412,38 +451,45 @@ def twelfth_que(update: Update, context: CallbackContext):
 def pain(update: Update, context: CallbackContext):
     global must_delete, pains_dict, edit
     context.user_data['changed'] = []
+    txt, keyboard = '', []
     
     update.callback_query.answer()
+    
     if update.callback_query.data == 'no_just':
         context.user_data['pain'] = "no, i just want to diversify my daily menu"
+    
     elif update.callback_query.data == 'changed_diet':
         context.user_data[
             'pain'] = "i changed my diet/became vegan  🌱 and need to find a menu solution for catching " \
                       "all the nutrients "
+    
     elif update.callback_query.data == 'problem':
-        context.user_data[
-            'pain'] = "i have a strong problem with not having a good lunch in the middle of working day"
+        context.user_data['pain'] = "i have a strong problem with not having a good lunch in the middle of working day"
+    
     elif update.callback_query.data == 'time':
         context.user_data['pain'] = "i don’t like/have time for cooking"
+    
     elif update.callback_query.data == 'less_money':
         context.user_data['pain'] = "i want to spent less money on my food"
+    
     elif update.callback_query.data == 'another':
         must_delete = context.bot.edit_message_text(text='write it below then',
                                                     chat_id=update.effective_chat.id,
                                                     message_id=update.effective_message.message_id,
                                                     reply_markup=None)
+        
         return ANOTHER_PAIN
+    
     elif update.callback_query.data == 'msg':
-        txt = ''
-        keyboard = []
+        
         for i, j in enumerate(pains_dict):
             txt += str(i + 1) + ': ' + pains_dict[j] + '\n\n'
             keyboard.append([InlineKeyboardButton(str(i + 1), callback_data=j)])
-
+        
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
-                                      reply_markup=InlineKeyboardMarkup(keyboard),
-                                      )
+                                      reply_markup=InlineKeyboardMarkup(keyboard), )
+        
         update_answers(update, context)
         return PAIN
     
@@ -451,6 +497,7 @@ def pain(update: Update, context: CallbackContext):
                                          chat_id=update.effective_chat.id,
                                          message_id=update.effective_message.message_id,
                                          reply_markup=None)
+    
     update_answers(update, context)
     return checking(update, context, edit)
 
@@ -462,6 +509,7 @@ def another_pain(update: Update, context: CallbackContext):
     edit = context.bot.send_message(text='cool! now check your answers plz',
                                     chat_id=update.effective_chat.id,
                                     reply_markup=None)
+
     update_answers(update, context)
     return checking(update, context, edit)
 
@@ -470,17 +518,19 @@ def another_pain(update: Update, context: CallbackContext):
 def checking(update: Update, context: CallbackContext, edit):
     txt = ''
     # print(context.user_data)
+    
     for i in context.user_data.keys():
         if i == 'in a process' or i == 'changed':
             continue
         else:
             txt += i + ": " + str(context.user_data[i]) + ';\n\n'
-    context.bot.send_chat_action(chat_id=update.effective_chat.id, action=telegram.ChatAction.TYPING,
-                                 timeout=1)
+    
+    context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING, timeout=1)
     time.sleep(1)
-    context.bot.edit_message_text(txt, reply_markup=InlineKeyboardMarkup([
-        [InlineKeyboardButton('alright', callback_data='alright'),
-         InlineKeyboardButton('wanna change', callback_data='you_better_no')], ]),
+    context.bot.edit_message_text(txt,
+                                  reply_markup=InlineKeyboardMarkup(
+                                      [[InlineKeyboardButton('alright', callback_data='alright'),
+                                        InlineKeyboardButton('wanna change', callback_data='you_better_no')]]),
                                   chat_id=edit.chat_id,
                                   message_id=edit.message_id, )
     
@@ -490,33 +540,38 @@ def checking(update: Update, context: CallbackContext, edit):
 # >>>>>>>>>>>>>>> if 'alright' conv end if else goes to changing <<<<<<<<<<<<<<<
 def last_que(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'alright':
         context.user_data['in a process'] = False
-
-        contact_button = [
-            [InlineKeyboardButton('🧡', url='https://instagram.com/alter_______native?igshid=YmMyMTA2M2Y=')]
-        ]
-
+        contact_button = [[InlineKeyboardButton('🧡',
+                                                url='https://instagram.com/alter_______native?igshid=YmMyMTA2M2Y=')]]
+    
         context.bot.forward_message(message_id=update.effective_message.message_id,
                                     chat_id=632291350,
                                     from_chat_id=update.effective_chat.id)
+    
         context.bot.edit_message_text('this is it for now 🧡 Lina will write you back ASAP.'
                                       'have a delicious continuation of the day\n\n'
                                       'wait. do you follow ALTER | NATIVE | FOOD on instagram?',
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(contact_button),
                                       chat_id=update.effective_chat.id)
+    
         update_answers(update, context)
         return cancel(update, context)
+
     elif update.callback_query.data == 'you_better_no':
         change = []
+
         for i in context.user_data.keys():
             if i not in ['username', 'in a process', 'changed']:
                 change.append([InlineKeyboardButton(i, callback_data=i)])
+
         context.bot.edit_message_text('pick what do you want to choose:',
                                       reply_markup=InlineKeyboardMarkup(change),
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         return CHANGE
 
 
@@ -524,6 +579,7 @@ def last_que(update: Update, context: CallbackContext):
 def change_que(update: Update, context: CallbackContext):
     global edit
     update.callback_query.answer()
+
     for i in context.user_data.keys():
         if update.callback_query.data == i:
             context.user_data['changed'].append(i)
@@ -532,6 +588,7 @@ def change_que(update: Update, context: CallbackContext):
                                                  chat_id=update.effective_chat.id,
                                                  message_id=update.effective_message.message_id)
             context.chat_data['wanna_change'] = i
+
     update_answers(update, context)
     return CHANGING_NAME
 
@@ -539,9 +596,11 @@ def change_que(update: Update, context: CallbackContext):
 # >>>>>>>>>>>>>>> change old to new and goes to checking again <<<<<<<<<<<<<<<
 def changing_answer(update: Update, context: CallbackContext):
     context.bot.deleteMessage(message_id=update.effective_message.message_id, chat_id=update.effective_chat.id)
+
     for i in context.user_data.keys():
         if i in context.chat_data['wanna_change']:
             context.user_data[i] = update.message.text
+
     update_answers(update, context)
     return checking(update, context, edit)
 
@@ -555,8 +614,10 @@ def changing_answer(update: Update, context: CallbackContext):
 # send two buttons 'see categories' and 'see whale menu' <<<<<<<<<<<<<<<
 def wats_up(update: Update, context: CallbackContext):
     global user
+
     reply_markup = [[InlineKeyboardButton('I want to assemble my meal', callback_data='see_categories')],
                     [InlineKeyboardButton('see whole menu', callback_data='see_whole')]]
+
     update.effective_message.reply_text(text=f"hey, {user}, what's up?",
                                         reply_markup=InlineKeyboardMarkup(reply_markup))
     return HI
@@ -581,16 +642,20 @@ def buttons(update: Update, context: CallbackContext):
                                                       callback_data=data[username][i]['category'])])
                 context.chat_data['category'].append(category)
                 context.chat_data['callback'].append(data[username][i]['category'])
+
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                       text="chose a category")
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
+
         return CATEGORY
+
     elif query.data == 'see_whole':
         for i in data[username]:
             keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
+
         keyboard.append([InlineKeyboardButton('see whole menu as message', callback_data='txt')])
         keyboard.append([InlineKeyboardButton('random', callback_data='random')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
@@ -611,6 +676,7 @@ def categories(update: Update, context: CallbackContext):
     context.chat_data['category_dishes'], context.chat_data['category_callback'] = [], []
     s = 0
     username = user
+
     if choice == 'back':
         reply_markup = [
             [InlineKeyboardButton('I want to assemble my meal', callback_data='see_categories')],
@@ -618,13 +684,16 @@ def categories(update: Update, context: CallbackContext):
         context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(reply_markup))
+
         return HI
+
     for i in data[username]:
         if choice in i['category']:
             s += 1
             keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
             context.chat_data['category_dishes'].append(i['name'])
             context.chat_data['category_callback'].append(i['callback'])
+
     if len(keyboard) == s:
         keyboard.append([InlineKeyboardButton('see these dishes in message', callback_data='txt_cat')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
@@ -633,6 +702,7 @@ def categories(update: Update, context: CallbackContext):
                                                 message_id=query.message.message_id,
                                                 reply_markup=InlineKeyboardMarkup(keyboard),
                                                 text=f'here is recipes w/ {choice}')
+
     return DISH
 
 
@@ -650,6 +720,7 @@ def send_dish(update: Update, context: CallbackContext):
     if choice == 'back_to_categories':
         for i, j in enumerate(context.chat_data['category']):
             keyboard.append([InlineKeyboardButton(j, callback_data=context.chat_data['callback'][i])])
+
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text(
             text='all categories is below:',
@@ -659,14 +730,18 @@ def send_dish(update: Update, context: CallbackContext):
         )
 
         return CATEGORY
+
     elif choice == 'back':
         reply_markup = [
             [InlineKeyboardButton('I want to assemble my meal', callback_data='see_categories')],
             [InlineKeyboardButton('see whole menu', callback_data='see_whole')]]
+
         context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(reply_markup))
+
         return HI
+
     for i in data[username]:
         if choice in i['callback']:
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
@@ -674,12 +749,12 @@ def send_dish(update: Update, context: CallbackContext):
             context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING,
                                          timeout=1)
             time.sleep(2)
             context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING,
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING,
                                          timeout=1)
             time.sleep(2)
             context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
@@ -688,6 +763,7 @@ def send_dish(update: Update, context: CallbackContext):
             #     context.chat_data['picked dish'][username][i['name']] += 1
             #     with open('users_data_picked.pkl', 'wb') as ud:
             #         pickle.dump(context.chat_data, ud)
+
         elif choice == 'random':
             rand = random.randint(0, len(data[username]))
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
@@ -696,16 +772,17 @@ def send_dish(update: Update, context: CallbackContext):
             context.bot.send_message(text=f'hey, maybe {data[username][rand]["name"]} will be nice?',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING, timeout=1)
             time.sleep(2)
             context.bot.send_message(text=data[username][rand]['ingredients'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_chat_action(chat_id=query.message.chat_id, action=telegram.ChatAction.TYPING, timeout=1)
+            context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING, timeout=1)
             time.sleep(2)
             context.bot.send_message(text=data[username][rand]['recipy'], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-            with open('users_data_picked.pkl', 'wb') as ud:
-                pickle.dump(context.chat_data, ud)
+            # with open('users_data_picked.pkl', 'wb') as ud:
+            #     pickle.dump(context.chat_data, ud)
+
             return cancel(update, context)
 
     if choice == 'txt':
@@ -714,23 +791,26 @@ def send_dish(update: Update, context: CallbackContext):
             if s % 7 == 0:
                 buttons_.append([])
                 k += 1
+
             txt += str(i + 1) + ': ' + j['name'] + '\n\n'
             buttons_[k].append(InlineKeyboardButton(str(i + 1), callback_data=j['callback']))
-        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
 
+        buttons_.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
+
         return DISH
+
     elif choice == 'txt_cat':
         for i, j in enumerate(context.chat_data['category_dishes']):
             txt += str(i + 1) + ': ' + j + '\n\n'
-            buttons_[k].append(
-                InlineKeyboardButton(str(i + 1), callback_data=context.chat_data['category_callback'][i]))
-
+            buttons_[k].append(InlineKeyboardButton(str(i + 1),
+                                                    callback_data=context.chat_data['category_callback'][i]))
         context.bot.edit_message_text(txt, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
+
         return DISH
 
     return cancel(update, context)
@@ -762,10 +842,12 @@ def admin(update: Update, context: CallbackContext):
                                          'start_pressed': 'see who pressed /start',
                                          # 'picked': 'see which dishes are picked',
                                          'interface': 'see how interface looks for a user'}
+
     for i in context.bot_data['admin_buttons'].keys():
         admins_button.append([InlineKeyboardButton(context.bot_data['admin_buttons'][i], callback_data=i)])
     
     update.message.reply_text(f"hey, bossss, let's go!", reply_markup=InlineKeyboardMarkup(admins_button))
+
     return ADMIN
 
 
@@ -775,37 +857,42 @@ def admin_2(update: Update, context: CallbackContext):
     keyboard, buttons_, txt = [], [[]], ''
     k, s, text = 0, 0, ''
     global df_answers, df_users
+
     if update.callback_query.data == 'back' or update.callback_query.data == 'back_m':
         return back_to_admin(update, context)
 
     # >>>>>>>>>>>>>>> send message <<<<<<<<<<<<<<<
     for j, i in enumerate(df_users['username']):
-        print('done')
+    
         if update.callback_query.data == i or update.callback_query.data == 'send to all' and \
                 context.bot_data['is message']:
+        
             if update.callback_query.data == i and len(i) > 1:
                 context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
                 context.bot_data['admin send message: user_name'].append(i)
         
                 text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
                        f'and you need to send it separately from text message'
+        
             elif update.callback_query.data == 'send to all':
                 context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
                 context.bot_data['admin send message: user_name'].append(i)
                 text = f'ok, what message do you want to send to all users?'
-            
+        
             context.bot.edit_message_text(text=text,
                                           message_id=update.effective_message.message_id,
                                           chat_id=update.effective_chat.id,
                                           reply_markup=None)
+        
             return SEND_MESSAGE_TXT
-        elif update.callback_query.data == 'send message' or \
-                update.callback_query.data == 'next_m':
-            
+    
+        elif update.callback_query.data == 'send message' or update.callback_query.data == 'next_m':
             if update.callback_query.data == 'next_m' or update.callback_query.data == 'send message':
                 for j, i in enumerate(df_users['username']):
+                
                     if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
                         continue
+                
                     elif j < context.bot_data['pages'] + 80:
                         k += 1
                         if k <= 4 and len(i) != 0:
@@ -814,9 +901,11 @@ def admin_2(update: Update, context: CallbackContext):
                             buttons_.append([])
                             s += 1
                             k = 0
+                
                     if j == context.bot_data['pages'] + 80:
                         buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
                         break
+            
                 buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
                 buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
                 text = 'choose user who u want to send message:\n' \
@@ -826,25 +915,30 @@ def admin_2(update: Update, context: CallbackContext):
                                               message_id=update.effective_message.message_id,
                                               reply_markup=InlineKeyboardMarkup(buttons_))
                 context.bot_data['pages'] += 80
+            
                 return SEND_MESSAGE
 
     # >>>>>>>>>>>>>>> see answers <<<<<<<<<<<<<<<
     for k, j in enumerate(df_answers['username']):
-    
+
         if update.callback_query.data == j and context.bot_data['is answers']:
             for s, m in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
                 txt += str(df_answers.columns.values[s]) + ':' + '*' + str(m) + '*' + '\n\n'
+
             context.bot.edit_message_text(txt,
                                           message_id=update.effective_message.message_id,
                                           chat_id=update.effective_chat.id,
                                           parse_mode=ParseMode.MARKDOWN,
                                           reply_markup=None)
+
             return cancel(update, context)
+
         elif update.callback_query.data == 'answers' or update.callback_query.data == 'next' or \
                 update.callback_query.data == 'back':
             txt = "pick who's data u wanna see:\nor just click here:\n\n" \
                   "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt" \
                   "-ON1T2ZR_O3sosfyzzlbI/edit#gid=0\n\n"
+
             if update.callback_query.data == 'answers' or update.callback_query.data == 'next':
                 for j, i in enumerate(df_answers['username']):
                     if j < context.bot_data['pages'] and context.bot_data['pages'] > 80:
@@ -860,24 +954,29 @@ def admin_2(update: Update, context: CallbackContext):
                     if j == context.bot_data['pages'] + 80:
                         buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
                         break
+
                 buttons_.append([InlineKeyboardButton('back', callback_data='back')])
                 context.bot.edit_message_text(txt,
                                               chat_id=update.effective_chat.id,
                                               message_id=update.effective_message.message_id,
                                               reply_markup=InlineKeyboardMarkup(buttons_))
                 context.bot_data['pages'] += 80
+
                 return DATA
 
     # >>>>>>>>>>>>>>> see who pressed start <<<<<<<<<<<<<<<
 
     if update.callback_query.data == 'start_pressed':
         text = f'here is {len(df_users)} users: \n\n'
+
         for i in df_users['username']:
             text += '@' + i + ' '
+
         context.bot.edit_message_text(text=text,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
+
         return cancel(update, context)
 
     # >>>>>>>>>>>>>>> add or change data for user <<<<<<<<<<<<<<<
@@ -891,6 +990,7 @@ def admin_2(update: Update, context: CallbackContext):
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
         return DATA_CHANGE
 
     # >>>>>>>>>>>>>>> see how interface look for a user <<<<<<<<<<<<<<<
@@ -898,12 +998,14 @@ def admin_2(update: Update, context: CallbackContext):
     elif update.callback_query.data == 'interface':
         for i in data:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+
         keyboard.append([InlineKeyboardButton('new user', callback_data='new user')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         text = 'pick a user to to see how they see interface'
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
         return INTERFACE
 
 
@@ -914,6 +1016,7 @@ def send_message(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['admin send message: users_id'], context.bot_data['admin send message: user_name'] = [], []
     text, buttons_, s, k = '', [[]], 0, 0
+
     if update.callback_query.data == 'back_m':
         return back_to_admin(update, context)
     
@@ -932,6 +1035,7 @@ def send_message(update: Update, context: CallbackContext):
             if j == context.bot_data['pages'] + 80:
                 buttons_.append([InlineKeyboardButton('>>', callback_data='next_m')])
                 break
+
         buttons_.append([InlineKeyboardButton('send to all', callback_data='send to all')])
         buttons_.append([InlineKeyboardButton('back', callback_data='back_m')])
         text = 'choose user who u want to send message:\n!note that u can send message only to user who pressed start'
@@ -940,13 +1044,14 @@ def send_message(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
         context.bot_data['pages'] += 80
+
         return ADMIN
+
     else:
         for j, i in enumerate(df_users['username']):
             if update.callback_query.data == i:
                 context.bot_data['admin send message: users_id'].append(str(df_users['id'][j]))
                 context.bot_data['admin send message: user_name'].append(i)
-                
                 text = f'ok, what message do you want to send to @{i}? \n\nIf it is file than it must be .pdf ' \
                        f'and you need to send it separately from text message'
             
@@ -959,6 +1064,7 @@ def send_message(update: Update, context: CallbackContext):
                                       message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id,
                                       reply_markup=None)
+
         return SEND_MESSAGE_TXT
 
 
@@ -970,62 +1076,72 @@ def second_que_txt(update: Update, context: CallbackContext):
             text=f"so, message:\n\n{message}\n\nto user(s): @{context.bot_data['admin send message: user_name']}",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
                                                 InlineKeyboardButton('change', callback_data='change')]]))
+
         return SENDING
+
     elif update.message.document:
         context.bot.get_file(update.message.document).download()
         context.bot_data['file'] = update.message.document['file_name']
+
         with open(f"pdf/{context.bot_data['file']}.pdf", 'wb') as f:
             context.bot.get_file(update.message.document).download(out=f)
             update.message.reply_text(
                 text=f"I kept it. wanna send?",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('send', callback_data='send'),
                                                     InlineKeyboardButton('cancel', callback_data='cancel')]]))
+
         return SEND_DOCUMENT
+
     else:
         update.message.reply_text("i dont know this file type..... I BROKE PRES /start again")
+
         return cancel(update, context)
 
 
 # >>>>>>>>>>>>>>> if we send a document <<<<<<<<<<<<<<<
 def sending_document(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'send':
         document = open(f"pdf/{context.bot_data['file']}.pdf", 'rb')
+    
         for i in context.bot_data['admin send message: users_id']:
-            context.bot.send_document(
-                document=document,
-                chat_id=i)
+            context.bot.send_document(document=document, chat_id=i)
+    
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
-        return cancel(update, context)
+
     elif update.callback_query.data == 'cancel':
         context.bot.edit_message_text('canceled, press /start again', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
-        return cancel(update, context)
+
+    return cancel(update, context)
 
 
 # >>>>>>>>>>>>>>> sending message via bot <<<<<<<<<<<<<<<
 def sending(update: Update, context: CallbackContext):
     update.callback_query.answer()
+
     if update.callback_query.data == 'send':
         for i in context.bot_data['admin send message: users_id']:
-            context.bot.send_message(
-                text=context.bot_data['admin send message: message'],
-                chat_id=i
-            )
+            context.bot.send_message(text=context.bot_data['admin send message: message'], chat_id=i)
+    
         context.bot.edit_message_text('done!',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+    
         return cancel(update, context)
+
     elif update.callback_query.data == 'change':
         context.bot.edit_message_text('type a new one:',
                                       reply_markup=None,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         return SEND_MESSAGE_TXT
 
 
@@ -1046,6 +1162,7 @@ def user_data(update: Update, context: CallbackContext):
         for j, i in enumerate(df_answers['username']):
             if j < context.bot_data['pages']:
                 continue
+
             elif j < context.bot_data['pages'] + 80:
                 k += 1
                 if i and k <= 4:
@@ -1054,24 +1171,30 @@ def user_data(update: Update, context: CallbackContext):
                     s += 1
                     k = 0
                     buttons_.append([])
+
             else:
                 buttons_.append([InlineKeyboardButton('>>', callback_data='next')])
                 break
+
         buttons_.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text(txt,
                                       chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(buttons_))
         context.bot_data['pages'] += 80
+
         return ADMIN
+
     else:
         txt = ''
         for k, j in enumerate(df_answers[df_answers['username'] == update.callback_query.data].values[0]):
             txt += str(df_answers.columns.values[k]) + ': ' + str(j) + '\n\n'
+
         context.bot.edit_message_text(txt,
                                       message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id,
                                       reply_markup=None)
+
         return cancel(update, context)
 
 
@@ -1079,8 +1202,10 @@ def user_data(update: Update, context: CallbackContext):
 def interface(update: Update, context: CallbackContext):
     global user
     update.callback_query.answer()
+
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
+
     for i in data:
         if update.callback_query.data == i:
             user = i
@@ -1089,13 +1214,16 @@ def interface(update: Update, context: CallbackContext):
                 [InlineKeyboardButton('see whole menu', callback_data='see_whole')]]
             update.effective_message.reply_text(text=f"hey, {i}, what's up?",
                                                 reply_markup=InlineKeyboardMarkup(reply_markup))
+
             return HI
+
     if update.callback_query.data == 'new user':
         reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
                         [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
                         [InlineKeyboardButton('want to read about the project', callback_data='read about')]]
         update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | FOOD\nwanna buy a menu?',
                                             reply_markup=InlineKeyboardMarkup(reply_markup))
+
         return WELCOME
 
 
@@ -1104,32 +1232,43 @@ def data_change(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['recipy data'] = ['number', 'name', 'category', 'ingredients', 'recipy', 'change', 'delete']
     keyboard, text = [[]], ''
+
     if update.callback_query.data == 'new user':
         text = "type his/her/their username carefully!\n" \
                "*Note, that u need to type it without @ symbol otherwise it won't work*"
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id, reply_markup=None,
                                       parse_mode=ParseMode.MARKDOWN)
+
         return NEW_USER
+
     if update.callback_query.data == 'del':
         text += 'pick who you want to delete or change username. once you do it you cannot restore the data'
+
         for i in data:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
         return DEL_CHANGE
+
     elif update.callback_query.data == 'change':
         for i in data:
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
+
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         text += 'pick who you wanna change'
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
         return CHANGE_USER
+
     elif update.callback_query.data == 'back':
+    
         return back_to_admin(update, context)
 
 
@@ -1144,6 +1283,7 @@ def back_to_changing(update: Update, context: CallbackContext):
     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
                                   reply_markup=InlineKeyboardMarkup(keyboard))
+
     return DATA_CHANGE
 
 
@@ -1151,6 +1291,7 @@ def back_to_changing(update: Update, context: CallbackContext):
 def change_user(update: Update, context: CallbackContext):
     update.callback_query.answer()
     text, keyboard = f'here is his/her/their menu:\n\n', [[]]
+
     if update.callback_query.data == 'back':
         return back_to_changing(update, context)
     
@@ -1165,12 +1306,14 @@ def change_user(update: Update, context: CallbackContext):
                     keyboard.append([])
                     k += 1
                 keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
+
             keyboard.append([InlineKeyboardButton('add new dish', callback_data='add dish'),
                              InlineKeyboardButton('back', callback_data='back')])
             text += '\npick what do u want to change here'
             context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                           message_id=update.effective_message.message_id,
                                           reply_markup=InlineKeyboardMarkup(keyboard))
+
             return WHAT_CHANGE
 
 
@@ -1178,6 +1321,7 @@ def change_user(update: Update, context: CallbackContext):
 def del_change(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['del or change'] = update.callback_query.data
+
     if update.callback_query.data == 'back':
         return back_to_changing(update, context)
     
@@ -1188,6 +1332,7 @@ def del_change(update: Update, context: CallbackContext):
                                   chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
                                   reply_markup=InlineKeyboardMarkup(keyboard))
+
     return DEL_CHANGE2
 
 
@@ -1199,6 +1344,7 @@ def del_change2(update: Update, context: CallbackContext):
     
     if update.callback_query.data == 'back':
         return back_to_changing(update, context)
+
     elif update.callback_query.data == 'delete':
         for i in data:
             if context.bot_data['del or change'] == i:
@@ -1206,12 +1352,15 @@ def del_change2(update: Update, context: CallbackContext):
                 context.bot.edit_message_text('done', chat_id=update.effective_chat.id,
                                               message_id=update.effective_message.message_id,
                                               reply_markup=InlineKeyboardMarkup(keyboard))
+
                 return SAVE_UPDATE
+
     elif update.callback_query.data == 'change':
         context.bot.edit_message_text("type new username\n*Note, that u need to type it without @ "
                                       "symbol otherwise it won't work*", chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id, parse_mode=ParseMode.MARKDOWN,
                                       reply_markup=None)
+
         return CHANGE_USERNAME
 
 
@@ -1219,11 +1368,13 @@ def del_change2(update: Update, context: CallbackContext):
 def change_username(update: Update, context: CallbackContext):
     keyboard = [[InlineKeyboardButton('save', callback_data='save'),
                  InlineKeyboardButton('cancel', callback_data='cancel')]]
+
     for i in data:
         if context.bot_data['del or change'] == i:
             data[update.message.text] = data[i]
             del data[i]
             update.message.reply_text('done', reply_markup=InlineKeyboardMarkup(keyboard))
+
             return SAVE_UPDATE
 
 
@@ -1232,10 +1383,11 @@ def add_new_user(update: Update, context: CallbackContext):
     data[update.message.text] = []
     context.bot_data['new user'] = update.message.text
     update.message.reply_text(f'ok{"." * 333} u need to save to continue or cancel',
-                              reply_markup=InlineKeyboardMarkup([
-                                  [InlineKeyboardButton('save', callback_data='save'),
-                                   InlineKeyboardButton('cancel', callback_data='cancel')
-                                   ]]))
+                              reply_markup=InlineKeyboardMarkup(
+                                  [[InlineKeyboardButton('save', callback_data='save'),
+                                    InlineKeyboardButton('cancel', callback_data='cancel')]])
+                              )
+    
     return SAVE_UPDATE
 
 
@@ -1245,26 +1397,33 @@ def what_do_we_change(update: Update, context: CallbackContext):
     update.callback_query.answer()
     text, keyboard = '', []
     context.bot_data['changing'] = {}
+
     if update.callback_query.data == 'back':
         return back_to_changing(update, context)
+
     elif update.callback_query.data == 'add dish':
         text = f"ok, now write a dish name"
         context.bot.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id, reply_markup=None)
+
         return NUMBER
+
     for i, j in enumerate(data[context.bot_data['picked user']]):
         if update.callback_query.data == str(i + 1):
             context.bot_data['changing']['what_number'] = i
             text += str(j['number']) + ': ' + str(j['name']) + '\n\n' + 'CATEGORY: ' + str(j['category']) + '\n\n'
             # str(j['ingredients'][:150]) + '...\n\n' + '*RECIPY*: '+str(j['recipy'][:150]) + '...'
+
     for k in context.bot_data['recipy data']:
         if k in ['number', 'add dish', 'delete', 'change']:
             continue
         else:
             keyboard.append([InlineKeyboardButton(k, callback_data=k)])
+
     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
                                   reply_markup=InlineKeyboardMarkup(keyboard), )
+
     return DATA_CHANGE_2
 
 
@@ -1291,6 +1450,7 @@ def new_number(update: Update, context: CallbackContext):
            f"should be <rice> again. I also guess that u can use emoji for categories, but this is another lvl of " \
            f"managing user's menu* "
     update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
     return ADD_CATEGORY
 
 
@@ -1301,6 +1461,7 @@ def add_category(update: Update, context: CallbackContext):
         'category'] = update.message.text
     text = f"got you. \n\n*now you need to add ingredients to the data. \ntype everything in one msg*"
     update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
     return ADD_INGR
 
 
@@ -1311,6 +1472,7 @@ def add_ing(update: Update, context: CallbackContext):
         'ingredients'] = update.message.text
     text = f"cool. last step is add recipy. \n\n*once again type everything in a single msg*"
     update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
     return ADD_RECIPY
 
 
@@ -1326,6 +1488,7 @@ def add_rec(update: Update, context: CallbackContext):
                                   [InlineKeyboardButton('save', callback_data='save'),
                                    InlineKeyboardButton('cancel', callback_data='cancel'),
                                    ]]))
+
     return SAVE_UPDATE
 
 
@@ -1345,6 +1508,7 @@ def data_change_2(update: Update, context: CallbackContext):
     context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                   message_id=update.effective_message.message_id,
                                   reply_markup=None)
+
     return DATA_CHANGE_3
 
 
@@ -1354,11 +1518,13 @@ def data_change_3(update: Update, context: CallbackContext):
         if context.bot_data['changing'][i]:
             context.bot_data['changing'][i] = False
             data[context.bot_data['picked user']][context.bot_data['changing']['what_number']][i] = update.message.text
+
     update.message.reply_text(f'ok{"." * 100}\nwanna save or continue?',
                               reply_markup=InlineKeyboardMarkup([
                                   [InlineKeyboardButton('save', callback_data='save'),
                                    InlineKeyboardButton('continue', callback_data='continue')
                                    ]]))
+
     return SAVE_UPDATE
 
 
@@ -1366,11 +1532,13 @@ def data_change_3(update: Update, context: CallbackContext):
 def save_update(update: Update, context: CallbackContext):
     update.callback_query.answer()
     text, keyboard = '', [[]]
+
     if update.callback_query.data == 'save':
         with open('data.pkl', 'wb') as save_:
             pickle.dump(data, save_)
         context.bot.edit_message_text('done, press /start', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
+
         return cancel(update, context)
 
     elif update.callback_query.data == 'continue':
@@ -1385,14 +1553,18 @@ def save_update(update: Update, context: CallbackContext):
                         k += 1
                     keyboard[k].append(InlineKeyboardButton(str(n + 1), callback_data=j['number']))
                 text += '\npick what do u want to change here'
+
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
         return WHAT_CHANGE
+
     elif update.callback_query.data == 'cancel':
         context.bot.edit_message_text('canceled, pres /start', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=None)
+
         return cancel(update, context)
 
 
@@ -1400,14 +1572,17 @@ def save_update(update: Update, context: CallbackContext):
 def back_to_admin(update: Update, context: CallbackContext):
     update.callback_query.answer()
     context.bot_data['pages'] = 0
+
     if update.callback_query.data == 'back' or update.callback_query.data == 'back_m':
         admins_button = []
         for i in context.bot_data['admin_buttons'].keys():
             admins_button.append([InlineKeyboardButton(context.bot_data['admin_buttons'][i], callback_data=i)])
-        context.bot.edit_message_text(
-            text=random.choice(context.bot_data['admin_phrases']),
-            reply_markup=InlineKeyboardMarkup(admins_button),
-            chat_id=update.effective_chat.id, message_id=update.effective_message.message_id)
+    
+        context.bot.edit_message_text(text=random.choice(context.bot_data['admin_phrases']),
+                                      reply_markup=InlineKeyboardMarkup(admins_button),
+                                      chat_id=update.effective_chat.id,
+                                      message_id=update.effective_message.message_id)
+    
         return ADMIN
 
 
