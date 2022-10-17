@@ -3,7 +3,7 @@ from __future__ import print_function
 import datetime
 import logging
 import os
-import pickle
+# import pickle
 import random
 import threading
 import time
@@ -20,18 +20,20 @@ from telegram.ext import *
 #                                                   VARIABLES
 # ----------------------------------------------------------------------------------------------------------------------
 
+global data, user, id_
+global must_delete, pains_dict, edit
+
 # reading google sheet json
 service_account = gspread.service_account(filename='alter-data-96722a9a7e3b.json')
 sh = service_account.open('alter data')  # open sheet
 wk_answers = sh.worksheet('2022')  # sheet with user's answers
 wk_user = sh.worksheet('users')  # sheet with usernames and id
-
-global data, user, id_
-global must_delete, pains_dict, edit
+wk_recipes = sh.worksheet('recipes')  # sheet with user's recipes
 
 # sheet data to pandas
 df_answers = pd.DataFrame(wk_answers.get_all_records())
 df_users = pd.DataFrame(wk_user.get_all_records())
+df_recipes = pd.DataFrame(wk_recipes.get_all_records())
 
 # tokens tg and geo service
 TELEGRAM_TOKEN, API_GEO = os.environ.get('TELEGRAM_TOKEN'), os.environ.get('geo_api')
@@ -59,24 +61,21 @@ CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 5
 
 def start(update: Update, context: CallbackContext):
     global data, user, id_, df_answers, df_users
-    user = update.effective_message.from_user.username  # username
-    id_ = update.message.from_user.id
+    user = update.effective_message.from_user.username  # get username
+    id_ = update.message.from_user.id  # get user id
+    
     context.user_data['id'] = id_
     context.user_data['username'] = user
+    
+    print(id_, user)
     update_answers(update, context)
-
-    with open('data.pkl', 'rb') as f:
-        try:
-            data = pickle.load(f)
-        finally:
-            data = {}
-
+    print(id_, user)
+    
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
-    elif id_ not in df_users['id'].unique():
-        df_users.loc[len(df_users)] = [id_, user]
     
-    if user not in data.keys():
+    elif user not in df_recipes['user'].unique().tolist() or id_ not in df_users['id'].unique().tolist():
+        print(1)
         
         def saving():
             threading.Timer((60.0 * 5), saving).start()
@@ -85,10 +84,13 @@ def start(update: Update, context: CallbackContext):
             print(datetime.datetime.now())
             gdf.set_with_dataframe(wk_user, df_users)
             print('done')
-
+        
         saving()
+        
         return wanna_buy(update, context)
+    
     else:
+        
         return wats_up(update, context)
 
 
@@ -1535,11 +1537,11 @@ def save_update(update: Update, context: CallbackContext):
     text, keyboard = '', [[]]
 
     if update.callback_query.data == 'save':
-        with open('data.pkl', 'wb') as save_:
-            pickle.dump(data, save_)
+        # with open('data.pkl', 'wb') as save_:
+        #     pickle.dump(data, save_)
         context.bot.edit_message_text('done, press /start', chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id)
-
+    
         return cancel(update, context)
 
     elif update.callback_query.data == 'continue':
@@ -1615,12 +1617,18 @@ def help_command(update: Update, context: CallbackContext):
     update.message.reply_text(text=text)
 
 
+# def about_command(up)
+
+
 def update_answers(update: Update, context: CallbackContext):
     """saving users data to gs"""
     global df_answers
-    print(context.user_data)
+    # print(context.user_data)
     print(datetime.datetime.now())
-    print(df_answers)
+    # print(context.user_data['id'])
+    # print(df_answers['id'])
+    
+    # print(df_answers)
     try:
         if context.user_data['id'] not in df_answers['id'].unique():
             df_answers = pd.concat([pd.DataFrame({'id': context.user_data['id']}, index=[0]), df_answers],
