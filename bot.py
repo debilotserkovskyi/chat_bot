@@ -20,7 +20,7 @@ from telegram.ext import *
 #                                                   VARIABLES
 # ----------------------------------------------------------------------------------------------------------------------
 
-global data, user, id_
+global user, id_
 global must_delete, pains_dict, edit
 
 # reading google sheet json
@@ -60,7 +60,7 @@ CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 5
 
 
 def start(update: Update, context: CallbackContext):
-    global data, user, id_, df_answers, df_users
+    global user, id_, df_answers, df_users
     user = update.effective_message.from_user.username  # get username
     id_ = update.effective_user.id  # get user id
     context.user_data['id'] = id_
@@ -71,15 +71,16 @@ def start(update: Update, context: CallbackContext):
     elif user not in df_recipes['user'].unique().tolist() or id_ not in df_users['id'].unique().tolist():
         if id_ not in df_users['id'].unique().tolist():
             df_users.loc[len(df_users)] = [id_, user]
-        
+    
+            # move it to admin panel from here
             def saving():
                 threading.Timer((60.0 * 5), saving).start()
                 gdf.set_with_dataframe(wk_answers, df_answers)
                 gdf.set_with_dataframe(wk_user, df_users)
                 print('done')
-        
-            saving()
     
+            saving()
+            # to here
         return wanna_buy(update, context)
     
     else:
@@ -627,16 +628,19 @@ def buttons(update: Update, context: CallbackContext):
     query.answer()
     keyboard, cat_list, used = [], [], set()
     context.chat_data['category'], context.chat_data['callback'] = [], []
+    context.chat_data['category_call'], context.chat_data['callback_call'] = [], []
     short = df_recipes[df_recipes['user'] == user]
-
+    
+    for j, i in enumerate(short['name']):
+        context.chat_data['callback'].append('dish_' + str(j))
+    
     if query.data == 'see_categories':
         cat_list = short['category'].unique().tolist()
         for category in cat_list:
-            keyboard.append([InlineKeyboardButton(str(category),
-                                                  callback_data=category)])
-            context.chat_data['category'].append(category)
-            context.chat_data['callback'].append(category)
-    
+            keyboard.append([InlineKeyboardButton(str(category), callback_data=category)])
+            context.chat_data['category_call'].append(category)
+            context.chat_data['callback_call'].append(category)
+        
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
@@ -648,7 +652,6 @@ def buttons(update: Update, context: CallbackContext):
 
     elif query.data == 'see_whole':
         for j, i in enumerate(short['name']):
-            context.chat_data['callback'].append('dish_' + str(j))
             keyboard.append([InlineKeyboardButton(i, callback_data='dish_' + str(j))])
     
         keyboard.append([InlineKeyboardButton('see whole menu as message', callback_data='txt')])
@@ -670,7 +673,6 @@ def categories(update: Update, context: CallbackContext):
     keyboard = []
     short = df_recipes[df_recipes['user'] == user]
     context.chat_data['category_dishes'], context.chat_data['category_callback'] = [], []
-    s = 0
     username = user
 
     if choice == 'back':
@@ -680,20 +682,17 @@ def categories(update: Update, context: CallbackContext):
         context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(reply_markup))
-
+    
         return HI
 
-    for i in data[username]:
-        if choice in i['category']:
-            s += 1
-            keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
-            context.chat_data['category_dishes'].append(i['name'])
-            context.chat_data['category_callback'].append(i['callback'])
+    for j, i in enumerate(short['category']):
+        if choice == i:
+            keyboard.append([InlineKeyboardButton(short['name'].to_list()[j],
+                                                  callback_data=context.chat_data['callback'][j])])
 
-    if len(keyboard) == s:
-        keyboard.append([InlineKeyboardButton('see these dishes in message', callback_data='txt_cat')])
-        keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
-    
+    keyboard.append([InlineKeyboardButton('see these dishes in message', callback_data='txt_cat')])
+    keyboard.append([InlineKeyboardButton('back', callback_data='back_to_categories')])
+
     must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id,
                                                 message_id=query.message.message_id,
                                                 reply_markup=InlineKeyboardMarkup(keyboard),
@@ -714,10 +713,13 @@ def send_dish(update: Update, context: CallbackContext):
     short = df_recipes[df_recipes['user'] == user]
     k, s = 0, 0  # indicators for buttons
     
+    print(context.chat_data['callback'])
+    print(context.chat_data)
+    
     if choice == 'back_to_categories':
         for i, j in enumerate(context.chat_data['category']):
             keyboard.append([InlineKeyboardButton(j, callback_data=context.chat_data['callback'][i])])
-
+        
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         context.bot.edit_message_text(
             text='all categories is below:',
