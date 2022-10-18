@@ -62,35 +62,27 @@ CHANGE_USERNAME, ADD_CATEGORY, ADD_INGR, ADD_RECIPY, SEND_DOCUMENT = range(50, 5
 def start(update: Update, context: CallbackContext):
     global data, user, id_, df_answers, df_users
     user = update.effective_message.from_user.username  # get username
-    id_ = update.message.from_user.id  # get user id
-    
+    id_ = update.effective_user.id  # get user id
     context.user_data['id'] = id_
     context.user_data['username'] = user
-    
-    print(id_, user)
     update_answers(update, context)
-    print(id_, user)
-    
     if user == 'linayolkina' or user == 'deadpimp':
         return admin(update, context)
-    
     elif user not in df_recipes['user'].unique().tolist() or id_ not in df_users['id'].unique().tolist():
-        print(1)
+        if id_ not in df_users['id'].unique().tolist():
+            df_users.loc[len(df_users)] = [id_, user]
         
-        def saving():
-            threading.Timer((60.0 * 5), saving).start()
-            print(datetime.datetime.now())
-            gdf.set_with_dataframe(wk_answers, df_answers.reset_index())
-            print(datetime.datetime.now())
-            gdf.set_with_dataframe(wk_user, df_users)
-            print('done')
+            def saving():
+                threading.Timer((60.0 * 5), saving).start()
+                gdf.set_with_dataframe(wk_answers, df_answers)
+                gdf.set_with_dataframe(wk_user, df_users)
+                print('done')
         
-        saving()
-        
+            saving()
+    
         return wanna_buy(update, context)
     
     else:
-        
         return wats_up(update, context)
 
 
@@ -104,6 +96,7 @@ def wanna_buy(update: Update, context: CallbackContext):
     reply_markup = [[InlineKeyboardButton('YES', callback_data='YES')],
                     [InlineKeyboardButton('wanna contact Lina first', callback_data='contact')],
                     [InlineKeyboardButton('want to read about the project', callback_data='read about')]]
+    # df_answers.loc[len(df_answers)] = [id_, user]
     
     update.effective_message.reply_text(text='hey, foodie🧡 welcome to ALTER | NATIVE | FOOD\nwanna buy a menu?',
                                         reply_markup=InlineKeyboardMarkup(reply_markup))
@@ -634,37 +627,37 @@ def buttons(update: Update, context: CallbackContext):
     query.answer()
     keyboard, cat_list, used = [], [], set()
     context.chat_data['category'], context.chat_data['callback'] = [], []
-    
-    if query.data == 'see_categories':
-        for i in range(len(data[username])):
-            cat_list.append(data[username][i]['category'])
-            unique_categories = [x for x in cat_list if x not in used and (used.add(x) or True)]
-            for category in unique_categories:
-                keyboard.append([InlineKeyboardButton(str(category),
-                                                      callback_data=data[username][i]['category'])])
-                context.chat_data['category'].append(category)
-                context.chat_data['callback'].append(data[username][i]['category'])
+    short = df_recipes[df_recipes['user'] == user]
 
+    if query.data == 'see_categories':
+        cat_list = short['category'].unique().tolist()
+        for category in cat_list:
+            keyboard.append([InlineKeyboardButton(str(category),
+                                                  callback_data=category)])
+            context.chat_data['category'].append(category)
+            context.chat_data['callback'].append(category)
+    
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                       text="chose a category")
         context.bot.edit_message_reply_markup(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                               reply_markup=reply_markup)
-
+    
         return CATEGORY
 
     elif query.data == 'see_whole':
-        for i in data[username]:
-            keyboard.append([InlineKeyboardButton(i['name'], callback_data=i['callback'])])
-
+        for j, i in enumerate(short['name']):
+            context.chat_data['callback'].append('dish_' + str(j))
+            keyboard.append([InlineKeyboardButton(i, callback_data='dish_' + str(j))])
+    
         keyboard.append([InlineKeyboardButton('see whole menu as message', callback_data='txt')])
         keyboard.append([InlineKeyboardButton('random', callback_data='random')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         must_delete = context.bot.edit_message_text(chat_id=query.message.chat_id, message_id=query.message.message_id,
                                                     text="here is your whole menu", reply_markup=reply_markup)
-
+    
         return DISH
 
 
@@ -675,6 +668,7 @@ def categories(update: Update, context: CallbackContext):
     query.answer()
     choice = query.data
     keyboard = []
+    short = df_recipes[df_recipes['user'] == user]
     context.chat_data['category_dishes'], context.chat_data['category_callback'] = [], []
     s = 0
     username = user
@@ -717,6 +711,7 @@ def send_dish(update: Update, context: CallbackContext):
     choice = update.callback_query.data
     txt = ''  # when user want to see whole list of dishes
     buttons_, keyboard = [[]], []
+    short = df_recipes[df_recipes['user'] == user]
     k, s = 0, 0  # indicators for buttons
     
     if choice == 'back_to_categories':
@@ -737,34 +732,31 @@ def send_dish(update: Update, context: CallbackContext):
         reply_markup = [
             [InlineKeyboardButton('I want to assemble my meal', callback_data='see_categories')],
             [InlineKeyboardButton('see whole menu', callback_data='see_whole')]]
-
+    
         context.bot.edit_message_text(text=f"so, what's up?", chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(reply_markup))
-
+    
         return HI
 
-    for i in data[username]:
-        if choice in i['callback']:
+    for j, i in enumerate(context.chat_data['callback']):
+        if choice == i:
             context.bot.deleteMessage(message_id=update.effective_message.message_id,
                                       chat_id=update.effective_chat.id)
-            context.bot.send_message(text=f'this is a recipy for *{i["name"]}* ',
+            context.bot.send_message(text=f'this is *{short["name"].iloc[j]}* recipy',
                                      chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
             context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING,
                                          timeout=1)
             time.sleep(2)
-            context.bot.send_message(text=i['ingredients'], chat_id=query.message.chat_id,
+            context.bot.send_message(text=short['ingr'].iloc[j], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN)
             context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING,
                                          timeout=1)
             time.sleep(2)
-            context.bot.send_message(text=i['recipy'], chat_id=query.message.chat_id,
+            context.bot.send_message(text=short['recipy'].iloc[j], chat_id=query.message.chat_id,
                                      parse_mode=ParseMode.MARKDOWN, )
-            # if update.effective_user.username not in ['deadpimp', 'linayolkina']:
-            #     context.chat_data['picked dish'][username][i['name']] += 1
-            #     with open('users_data_picked.pkl', 'wb') as ud:
-            #         pickle.dump(context.chat_data, ud)
+            cancel(update, context)
 
         elif choice == 'random':
             rand = random.randint(0, len(data[username]))
@@ -985,21 +977,24 @@ def admin_2(update: Update, context: CallbackContext):
     # >>>>>>>>>>>>>>> add or change data for user <<<<<<<<<<<<<<<
 
     elif update.callback_query.data == 'data':
+    
         keyboard.append([InlineKeyboardButton('change existing', callback_data='change')])
         keyboard.append([InlineKeyboardButton('del or change username', callback_data='del')])
         keyboard.append([InlineKeyboardButton('add new user', callback_data='new user')])
         keyboard.append([InlineKeyboardButton('back', callback_data='back')])
-        text = 'pick a user to change or add a new one or delete or change his/her/their name'
+        text = "ok it's simpler here link: " \
+               "https://docs.google.com/spreadsheets/d/1e8Z1k3DPzTfipcNsKzxXNt-ON1T2ZR_O3sosfyzzlbI/edit#gid=19480151" \
+               ""
         context.bot.edit_message_text(text, chat_id=update.effective_chat.id,
                                       message_id=update.effective_message.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
-
+    
         return DATA_CHANGE
 
     # >>>>>>>>>>>>>>> see how interface look for a user <<<<<<<<<<<<<<<
 
     elif update.callback_query.data == 'interface':
-        for i in data:
+        for i in df_recipes['user'].unique().tolist():
             keyboard.append([InlineKeyboardButton(i, callback_data=i)])
 
         keyboard.append([InlineKeyboardButton('new user', callback_data='new user')])
@@ -1209,7 +1204,7 @@ def interface(update: Update, context: CallbackContext):
     if update.callback_query.data == 'back':
         return back_to_admin(update, context)
 
-    for i in data:
+    for i in df_recipes['user'].unique().tolist():
         if update.callback_query.data == i:
             user = i
             reply_markup = [
@@ -1217,7 +1212,7 @@ def interface(update: Update, context: CallbackContext):
                 [InlineKeyboardButton('see whole menu', callback_data='see_whole')]]
             update.effective_message.reply_text(text=f"hey, {i}, what's up?",
                                                 reply_markup=InlineKeyboardMarkup(reply_markup))
-
+        
             return HI
 
     if update.callback_query.data == 'new user':
@@ -1503,7 +1498,6 @@ def data_change_2(update: Update, context: CallbackContext):
         context.bot_data['changing'][i] = False
         if update.callback_query.data == i:
             context.bot_data['changing'][i] = True
-            # print(context.bot_data['changing']['number'])
             text = 'it was: \n\n' + \
                    data[context.bot_data['picked user']][context.bot_data['changing']['what_number']][i] + \
                    '\n\nTYPE A NEW ONE BELOW'
@@ -1625,35 +1619,23 @@ def update_answers(update: Update, context: CallbackContext):
     global df_answers
     # print(context.user_data)
     print(datetime.datetime.now())
-    # print(context.user_data['id'])
-    # print(df_answers['id'])
     
-    # print(df_answers)
-    try:
-        if context.user_data['id'] not in df_answers['id'].unique():
-            df_answers = pd.concat([pd.DataFrame({'id': context.user_data['id']}, index=[0]), df_answers],
-                                   ignore_index=True)
-    finally:
-        print('first')
+    df_answers = df_answers.set_index('id')
+    
+    if context.user_data['id'] not in df_answers.index.to_list():
+        print('first if')
+        df_answers = pd.concat([df_answers.reset_index(),
+                                pd.DataFrame({'id': context.user_data['id'], 'username': context.user_data['username']},
+                                             index=[len(df_answers)])], ignore_index=True)
+    else:
+        for i in context.user_data:
+            df_answers.loc[context.user_data['id']][i] = context.user_data[i]
+    
+    if df_answers.index.name == 'id':
+        df_answers = df_answers.reset_index()
     
     print(datetime.datetime.now())
-    try:
-        df_answers = df_answers.set_index('id')
-    finally:
-        print('suka')
-    print(datetime.datetime.now())
     
-    for i in context.user_data:
-        if i == 'id':
-            continue
-        else:
-            df_answers.loc[context.user_data['id'], i] = context.user_data[i]
-    print(datetime.datetime.now())
-    
-    # df_answers.loc[id_, 'username'] = user
-    # print(context.user_data)
-    # print(df_answers)
-
 
 def cancel(update: Update, context: CallbackContext):
     # update.message.reply_text(
